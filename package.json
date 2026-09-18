@@ -1,0 +1,22 @@
+{
+  "name": "cinewave-entertainment",
+  "version": "1.0.0",
+  "description": "CineWave Entertainment - Movie Ticket Booking Management on Pega Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test_scenarios.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "pega",
+    "movie-booking",
+    "case-lifecycle",
+    "theme-cosmos"
+  ],
+  "author": "CineWave Engineering Team",
+  "license": "ISC"
+}
