@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CineWave Entertainment – Pega Movie Ticket Booking</title>
+  <title>CineWave Entertainment – Pega Platform™ (Major Version 01)</title>
   <link rel="stylesheet" href="pega-cosmos.css">
 </head>
 <body>
@@ -14,7 +14,10 @@
       <div class="masthead-logo">CW</div>
       <div>
         <div class="masthead-title">CineWave Entertainment</div>
-        <div class="masthead-sub">Pega Platform™ · Infinity Edition</div>
+        <div class="masthead-sub">
+          Pega Platform™ '24.1 Infinity · 
+          <span class="ruleset-badge" id="headerRulesetBadge">CineWave:01-01-01 (Major 01)</span>
+        </div>
       </div>
     </div>
 
@@ -33,7 +36,7 @@
         <div class="user-avatar" id="headerUserAvatar">CU</div>
         <div>
           <strong id="headerUserName">Arun Kumar</strong>
-          <div style="font-size: 10px; color: #93c5fd;" id="headerUserRole">Customer User</div>
+          <div style="font-size: 10px; color: #93c5fd;" id="headerUserRole">Access Group: CineWave:CustomerUser</div>
         </div>
       </div>
     </div>
@@ -68,16 +71,20 @@
               <div class="case-icon">🎟️</div>
               <div>
                 <div class="case-id" id="caseDisplayId">CW-New (Draft)</div>
-                <div class="case-type">Case Type: Movie Ticket Booking (CW-MovieBooking)</div>
+                <div class="case-type">
+                  Case Type: <strong>CW-CineWave-Work-MovieBooking</strong> · 
+                  <span id="caseRulesetVersion" style="color: var(--pega-blue); font-weight: 700;">Ruleset: CineWave:01-01-01</span>
+                </div>
               </div>
             </div>
             <div class="case-meta">
+              <span class="work-queue-badge" id="caseDisplayRoute">Route: pyWorkList</span>
+              <span class="urgency-badge" id="caseDisplayUrgency">Urgency: 10</span>
               <span class="status-badge status-requested" id="caseDisplayStatus">Booking Requested</span>
-              <span style="font-size: 12px; color: #64748b;">Urgency: <strong>10</strong></span>
             </div>
           </div>
 
-          <!-- Pega Stage Chevron Bar -->
+          <!-- Pega Primary Stages Chevron Bar -->
           <div class="stage-chevron-bar" id="stageChevronBar">
             <div class="stage-chevron active" id="chevronStage1">
               <div class="stage-circle">1</div>
@@ -105,17 +112,28 @@
             </div>
           </div>
 
+          <!-- Pega Alternate Stages Bar -->
+          <div class="stage-alternate-bar" id="stageAlternateBar">
+            <span style="font-weight: 700; color: #64748b;">⚡ Alternate Stages:</span>
+            <div class="stage-chevron alternate-timeout" id="chevronAltTimeout" style="padding: 4px 12px; font-size: 11px; border-radius: 4px; clip-path: none;">
+              ⏱️ Alt A: Seat Hold Timeout (SLA Expiry)
+            </div>
+            <div class="stage-chevron alternate-cancel" id="chevronAltCancel" style="padding: 4px 12px; font-size: 11px; border-radius: 4px; clip-path: none;">
+              ❌ Alt B: Cancellation
+            </div>
+          </div>
+
           <!-- Stage 1 View: Booking Request -->
           <div class="stage-content-view" id="stageView1">
             <div class="view-header">
               <h2 class="view-title">Stage 1 – Enter Booking Request Details</h2>
-              <p class="view-subtitle">Provide customer contact details and select the desired movie, theatre, and show time.</p>
+              <p class="view-subtitle">Provide customer contact details and preferences. Dynamic pricing will be evaluated using Pega Decision Tables.</p>
             </div>
 
             <div id="stage1Alert"></div>
 
             <form id="formBookingRequest" onsubmit="handleStage1Submit(event)">
-              <h4 style="margin-bottom: 12px; color: var(--pega-blue); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Customer Information</h4>
+              <h4 style="margin-bottom: 12px; color: var(--pega-blue); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Customer Profile & Tier</h4>
               <div class="pega-form-grid">
                 <div class="form-group">
                   <label class="form-label" for="inputCustomerName">Customer Name <span class="required-asterisk">*</span></label>
@@ -124,11 +142,19 @@
                 <div class="form-group">
                   <label class="form-label" for="inputCustomerEmail">Email Address <span class="required-asterisk">*</span></label>
                   <input type="email" id="inputCustomerEmail" class="form-control" placeholder="e.g. arun.kumar@example.com" value="arun.kumar@example.com" required>
-                  <span class="form-helper">Confirmation email will be dispatched to this address.</span>
+                  <span class="form-helper">Dispatches correspondence via Pega EMAIL channel.</span>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="inputCustomerPhone">Mobile Number <span class="required-asterisk">*</span></label>
                   <input type="tel" id="inputCustomerPhone" class="form-control" placeholder="e.g. 9876543210" value="9876543210" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="selectCustomerTier">Membership Tier (Pega Decision Table)</label>
+                  <select id="selectCustomerTier" class="form-control">
+                    <option value="Regular">Regular Member (Standard Pricing)</option>
+                    <option value="VIP" selected>VIP Member (15% Decision Table Discount)</option>
+                    <option value="Gold">Gold Member (25% Decision Table Discount)</option>
+                  </select>
                 </div>
               </div>
 
@@ -155,7 +181,7 @@
                 <div class="form-group">
                   <label class="form-label" for="inputTicketsCount">Number of Tickets <span class="required-asterisk">*</span></label>
                   <input type="number" id="inputTicketsCount" class="form-control" min="1" max="10" value="2" required>
-                  <span class="form-helper">You must pick exactly this number of seats in Stage 2.</span>
+                  <span class="form-helper">ℹ️ Pega Routing Rule: Selecting > 4 tickets routes case to <strong>StaffReviewQueue@CineWave</strong> for Manager Approval.</span>
                 </div>
               </div>
 
@@ -171,10 +197,25 @@
           <div class="stage-content-view hidden" id="stageView2">
             <div class="view-header">
               <h2 class="view-title">Stage 2 – Check Show & Seat Availability</h2>
-              <p class="view-subtitle">Select your preferred seats from the live cinema layout. Selected seats must match requested ticket count.</p>
+              <p class="view-subtitle">Select your preferred seats. Pega SLA holds these seats for 10 minutes before auto-releasing.</p>
             </div>
 
             <div id="stage2Alert"></div>
+
+            <!-- Pega Service Level Agreement (SLA) Monitor -->
+            <div class="sla-box" id="slaBoxContainer">
+              <div>
+                <strong>⏱️ Pega SLA: SeatHoldSLA</strong> (Goal: 5m | Deadline: 10m)
+                <div style="font-size: 11px; color: #64748b;">Urgency increments if Goal/Deadline passes. Expiry routes to Alternate Stage.</div>
+              </div>
+              <div class="sla-progress-track">
+                <div class="sla-progress-fill" id="slaProgressFill" style="width: 20%;"></div>
+              </div>
+              <div class="sla-timer-text" id="slaTimerText">09:45 remaining</div>
+              <button type="button" class="btn-pega btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="simulateExpireSLA()">
+                ⚡ Fast-Forward SLA (Test Expiry)
+              </button>
+            </div>
 
             <div class="pega-alert alert-info" id="seatSelectionStatusBanner">
               <div>
@@ -195,7 +236,7 @@
               <div class="seat-legend">
                 <div class="legend-item">
                   <div class="legend-box" style="border: 1.5px solid #10b981; background: #1e293b;"></div>
-                  <span>Available (₹200 - ₹350)</span>
+                  <span>Available</span>
                 </div>
                 <div class="legend-item">
                   <div class="legend-box" style="background: #0080ff; border: 1.5px solid #60a5fa;"></div>
@@ -206,7 +247,7 @@
                   <span>Already Booked</span>
                 </div>
                 <div class="legend-item">
-                  <span style="color: #a78bfa; font-weight: 700;">Rows A-B: Standard · Rows C-D: Premium · Row E: Recliner</span>
+                  <span style="color: #a78bfa; font-weight: 700;">Rows A-B: Standard · Rows C-D: Premium (+₹50) · Row E: Recliner (+₹150)</span>
                 </div>
               </div>
             </div>
@@ -225,14 +266,14 @@
           <div class="stage-content-view hidden" id="stageView3">
             <div class="view-header">
               <h2 class="view-title">Stage 3 – Customer Confirmation Summary</h2>
-              <p class="view-subtitle">Review your complete booking details. Final confirmation is required to lock in the reservation.</p>
+              <p class="view-subtitle">Review your complete booking details. Final confirmation is required before SLA expiry.</p>
             </div>
 
             <div id="stage3Alert"></div>
 
             <div class="summary-container">
               <h3 style="color: var(--pega-navy); font-size: 16px; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-                🎟️ Booking Summary Statement
+                🎟️ Booking Summary Statement (Pega Major Ruleset: <span id="sumRulesetVersion">CineWave:01-01-01</span>)
               </h3>
 
               <table class="summary-table">
@@ -246,8 +287,8 @@
                     <td class="field-val" id="sumCustomerName">Arun Kumar</td>
                   </tr>
                   <tr>
-                    <td class="field-label">Email & Mobile</td>
-                    <td class="field-val" id="sumCustomerContact">arun.kumar@example.com · 9876543210</td>
+                    <td class="field-label">Customer Tier</td>
+                    <td class="field-val" id="sumCustomerTier">VIP (15% Discount Applied)</td>
                   </tr>
                   <tr>
                     <td class="field-label">Movie</td>
@@ -270,15 +311,43 @@
                     <td class="field-val" id="sumTickets">2</td>
                   </tr>
                   <tr>
-                    <td class="field-label">Price per Ticket</td>
-                    <td class="field-val" id="sumPricePerTicket">₹200</td>
+                    <td class="field-label">Effective Unit Price</td>
+                    <td class="field-val" id="sumPricePerTicket">₹170 (Base ₹200 - 15% VIP Discount)</td>
                   </tr>
                   <tr class="total-row">
                     <td class="field-label" style="color: var(--pega-blue);">Total Amount Payable</td>
-                    <td class="field-val" id="sumTotalAmount">₹400 (2 × ₹200)</td>
+                    <td class="field-val" id="sumTotalAmount">₹340</td>
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Pega Decision Table Audit Card -->
+              <div class="decision-table-callout">
+                <strong>📊 Pega Decision Table Evaluation:</strong>
+                <span id="dtAuditRuleName" style="color: #1e40af; font-family: monospace;">Rule-Declare-DecisionTable: LookupPricing</span>
+                <table class="dt-matrix">
+                  <thead>
+                    <tr>
+                      <th>Condition: Seat Tier</th>
+                      <th>Condition: Weekend?</th>
+                      <th>Condition: Member Tier</th>
+                      <th>Action: Surcharge</th>
+                      <th>Action: Discount %</th>
+                      <th>Final Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="dt-active-row">
+                      <td id="dtValSeat">Standard</td>
+                      <td id="dtValWeekend">Weekend (Sun)</td>
+                      <td id="dtValTier">VIP</td>
+                      <td id="dtValSurcharge">+₹30</td>
+                      <td id="dtValDiscount">15% Off</td>
+                      <td id="dtValFinal" style="font-weight: 800;">₹195</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
               <div class="pega-alert alert-warning" style="margin-top: 1rem;">
                 ⚠️ <strong>Pega Business Rule 4:</strong> Customer confirmation is mandatory before final booking. You may cancel at this stage without any charges.
@@ -287,7 +356,7 @@
 
             <div class="pega-actions-bar">
               <button type="button" class="btn-pega btn-danger" id="btnCancelBooking" onclick="handleDecision('CANCEL')">
-                ✕ Cancel Booking
+                ✕ Cancel Booking (Route to Alternate Stage)
               </button>
               <button type="button" class="btn-pega btn-secondary" onclick="backToStage2()">
                 ← Modify Seats
@@ -298,7 +367,7 @@
             </div>
           </div>
 
-          <!-- Stage 4/5/6 Completion View -->
+          <!-- Stage 4/5/6 Completion or Alternate Stage View -->
           <div class="stage-content-view hidden" id="stageViewFinal">
             <div id="finalStatusBanner"></div>
 
@@ -310,6 +379,7 @@
                     <th>Timestamp</th>
                     <th>Action</th>
                     <th>Status</th>
+                    <th>Urgency</th>
                     <th>Performed By</th>
                     <th>Details</th>
                   </tr>
@@ -355,6 +425,7 @@
                   <th>Date & Time</th>
                   <th>Seats</th>
                   <th>Total</th>
+                  <th>Ruleset</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -393,6 +464,9 @@
         <button class="tab-btn active" id="tabStaffDashboard" onclick="switchStaffTab('dashboard')">
           📊 Reports & Analytics
         </button>
+        <button class="tab-btn" id="tabStaffQueue" onclick="switchStaffTab('queue')">
+          👥 Work Queue (Approvals) <span class="tab-badge" id="badgeQueueCount">0</span>
+        </button>
         <button class="tab-btn" id="tabStaffBookings" onclick="switchStaffTab('bookings')">
           📑 Manage Bookings
         </button>
@@ -401,6 +475,9 @@
         </button>
         <button class="tab-btn" id="tabStaffMaster" onclick="switchStaffTab('master')">
           🎬 Manage Movies & Shows
+        </button>
+        <button class="tab-btn" id="tabStaffSkim" onclick="switchStaffTab('skim')">
+          ⚙️ Pega Major Ruleset Skim
         </button>
       </div>
 
@@ -424,9 +501,9 @@
             <div class="kpi-sub">Completed reservations</div>
           </div>
           <div class="kpi-card red">
-            <div class="kpi-title">Cancelled Cases</div>
+            <div class="kpi-title">Cancelled / Timeout</div>
             <div class="kpi-value" id="kpiCancelledBookings">0</div>
-            <div class="kpi-sub">Customer / staff cancelled</div>
+            <div class="kpi-sub">Alternate stage resolutions</div>
           </div>
           <div class="kpi-card green">
             <div class="kpi-title">Total Revenue</div>
@@ -474,7 +551,38 @@
         </div>
       </div>
 
-      <!-- TAB 2: Staff Manage Bookings -->
+      <!-- TAB 2: Staff Work Queue (Pending Approvals) -->
+      <div id="viewStaffQueue" class="hidden">
+        <div class="case-card">
+          <div class="case-header">
+            <div>
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--pega-navy);">Work Queue: StaffReviewQueue@CineWave</h2>
+              <p style="font-size: 12px; color: var(--pega-text-muted);">Pega routing assignments for bulk ticket requests (> 4 tickets) requiring Manager Approval.</p>
+            </div>
+          </div>
+          <div style="padding: 1.5rem; overflow-x: auto;">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Customer</th>
+                  <th>Movie</th>
+                  <th>Theatre</th>
+                  <th>Tickets</th>
+                  <th>Total Amount</th>
+                  <th>Urgency</th>
+                  <th>Routing Action</th>
+                </tr>
+              </thead>
+              <tbody id="workQueueTableBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Staff Manage Bookings -->
       <div id="viewStaffBookings" class="hidden">
         <div class="case-card">
           <div class="case-header">
@@ -488,9 +596,11 @@
                 <option value="Booking Requested">Booking Requested</option>
                 <option value="Availability Checked">Availability Checked</option>
                 <option value="Awaiting Customer Confirmation">Awaiting Customer Confirmation</option>
+                <option value="Pending-ManagerApproval">Pending-ManagerApproval</option>
                 <option value="Confirmed">Confirmed</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Resolved-Timeout">Resolved-Timeout</option>
               </select>
             </div>
           </div>
@@ -517,7 +627,7 @@
         </div>
       </div>
 
-      <!-- TAB 3: Staff Seat Inspector -->
+      <!-- TAB 4: Staff Seat Inspector -->
       <div id="viewStaffSeats" class="hidden">
         <div class="case-card">
           <div class="case-header">
@@ -548,10 +658,9 @@
         </div>
       </div>
 
-      <!-- TAB 4: Master Data Management -->
+      <!-- TAB 5: Master Data Management -->
       <div id="viewStaffMaster" class="hidden">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
-          
           <!-- Add Movie -->
           <div class="case-card">
             <div class="case-header">
@@ -610,7 +719,7 @@
                   <input type="text" id="addShowTime" class="form-control" placeholder="e.g. 07:00 PM" value="07:00 PM" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 12px;">
-                  <label class="form-label">Ticket Price (₹) <span class="required-asterisk">*</span></label>
+                  <label class="form-label">Base Ticket Price (₹) <span class="required-asterisk">*</span></label>
                   <input type="number" id="addShowPrice" class="form-control" min="50" max="1000" value="250" required>
                 </div>
                 <button type="submit" class="btn-pega btn-primary" style="width: 100%; margin-top: 10px;">
@@ -619,9 +728,42 @@
               </form>
             </div>
           </div>
-
         </div>
       </div>
+
+      <!-- TAB 6: Pega Major Ruleset Skim Console -->
+      <div id="viewStaffSkim" class="hidden">
+        <div class="case-card">
+          <div class="case-header">
+            <div>
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--pega-navy);">⚙️ Pega Major Ruleset Skim & Version Management</h2>
+              <p style="font-size: 12px; color: var(--pega-text-muted);">Simulate Pega Ruleset Major Skimming (e.g. 01-01-XX → 02-01-01) for major release architecture upgrades.</p>
+            </div>
+          </div>
+          <div class="stage-content-view">
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+              <h4 style="color: var(--pega-blue); margin-bottom: 8px;">Pega Ruleset Versioning Principles:</h4>
+              <p style="font-size: 13px; color: #1e40af; line-height: 1.6;">
+                In Pega Platform™, a <strong>Major Version</strong> (e.g., <code>01</code> to <code>02</code>) represents significant architectural improvements, rule overhauls, or breaking schema updates. 
+                Running a <strong>Major Skim</strong> takes the highest resolution version of each rule across patch versions and re-establishes a clean base in the new major version (e.g., <code>02-01-01</code>).
+              </p>
+              <div style="margin-top: 1rem; display: flex; gap: 20px; font-size: 13px;">
+                <div><strong>Current Ruleset:</strong> <span id="skimCurrentRuleset" style="color: #0d8a43; font-weight: 800;">CineWave:01-01-01</span></div>
+                <div><strong>Current Major:</strong> <span id="skimCurrentMajor" style="font-weight: 800;">01</span></div>
+                <div><strong>Next Skim Major:</strong> <span id="skimNextMajor" style="color: var(--pega-blue); font-weight: 800;">02</span></div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+              <button class="btn-pega btn-primary" onclick="performMajorSkim()">
+                🚀 Perform Pega Major Ruleset Skim (Upgrade to Next Major)
+              </button>
+            </div>
+            <div id="skimResultAlert" style="margin-top: 1rem;"></div>
+          </div>
+        </div>
+      </div>
+
     </section>
 
   </main>

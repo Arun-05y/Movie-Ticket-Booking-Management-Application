@@ -1,26 +1,66 @@
 // CineWave Entertainment - Pega Theme Cosmos Interactive Client
-// Application Class: CW-CineWave-Work-MovieBooking
+// Application Class: CW-CineWave-Work-MovieBooking (Pega Major Version Architecture)
 
 let currentPortal = 'customer';
 let currentCustomerTab = 'new-case';
 let currentStaffTab = 'dashboard';
 
-// Master data caches
+// Master data caches & Pega metadata
 let cachedMovies = [];
 let cachedTheatres = [];
 let cachedShows = [];
+let pegaMetadata = null;
 
 // Active in-flight case
 let currentCase = null;
 let currentShowSeatData = null;
 let selectedSeatNumbers = [];
 
+// SLA Timer State
+let slaTimerInterval = null;
+let slaRemainingSeconds = 600; // 10 minutes default
+
 // Init on page load
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadPegaVersion();
   await loadMasterData();
   await refreshCustomerData();
   await refreshStaffDashboard();
 });
+
+// -------------------------------------------------------------
+// Pega Major Version Metadata
+// -------------------------------------------------------------
+async function loadPegaVersion() {
+  try {
+    const res = await fetch('/api/pega/version');
+    const json = await res.json();
+    if (json.success) {
+      pegaMetadata = json.data;
+      updateRulesetBadges();
+    }
+  } catch (err) {
+    console.error('Error fetching Pega metadata:', err);
+  }
+}
+
+function updateRulesetBadges() {
+  if (!pegaMetadata) return;
+  const badge = document.getElementById('headerRulesetBadge');
+  if (badge) badge.textContent = `${pegaMetadata.rulesetVersion} (Major ${pegaMetadata.majorVersion})`;
+
+  const caseVer = document.getElementById('caseRulesetVersion');
+  if (caseVer) caseVer.textContent = `Ruleset: ${pegaMetadata.rulesetVersion}`;
+
+  const skimCurr = document.getElementById('skimCurrentRuleset');
+  if (skimCurr) skimCurr.textContent = pegaMetadata.rulesetVersion;
+
+  const skimMaj = document.getElementById('skimCurrentMajor');
+  if (skimMaj) skimMaj.textContent = pegaMetadata.majorVersion;
+
+  const skimNext = document.getElementById('skimNextMajor');
+  if (skimNext) skimNext.textContent = String(parseInt(pegaMetadata.majorVersion, 10) + 1).padStart(2, '0');
+}
 
 // -------------------------------------------------------------
 // Portal & Tab Navigation
@@ -43,17 +83,17 @@ function switchPortal(portal) {
     userAvatar.textContent = 'CU';
     userAvatar.style.background = '#0080ff';
     userName.textContent = 'Arun Kumar';
-    userRole.textContent = 'Customer User';
+    userRole.textContent = 'Access Group: CineWave:CustomerUser';
     refreshCustomerData();
   } else {
     btnCust.classList.remove('active');
     btnStaff.classList.add('active');
     secCust.classList.add('hidden');
     secStaff.classList.remove('hidden');
-    userAvatar.textContent = 'OP';
+    userAvatar.textContent = 'CM';
     userAvatar.style.background = '#10b981';
-    userName.textContent = 'Operator@CineWave';
-    userRole.textContent = 'Staff Operator';
+    userName.textContent = 'Manager@CineWave';
+    userRole.textContent = 'Access Group: CineWave:CinemaManager';
     refreshStaffDashboard();
   }
 }
@@ -83,10 +123,10 @@ function switchCustomerTab(tab) {
 
 function switchStaffTab(tab) {
   currentStaffTab = tab;
-  ['tabStaffDashboard', 'tabStaffBookings', 'tabStaffSeats', 'tabStaffMaster'].forEach(id => {
+  ['tabStaffDashboard', 'tabStaffQueue', 'tabStaffBookings', 'tabStaffSeats', 'tabStaffMaster', 'tabStaffSkim'].forEach(id => {
     document.getElementById(id)?.classList.remove('active');
   });
-  ['viewStaffDashboard', 'viewStaffBookings', 'viewStaffSeats', 'viewStaffMaster'].forEach(id => {
+  ['viewStaffDashboard', 'viewStaffQueue', 'viewStaffBookings', 'viewStaffSeats', 'viewStaffMaster', 'viewStaffSkim'].forEach(id => {
     document.getElementById(id)?.classList.add('hidden');
   });
 
@@ -94,6 +134,10 @@ function switchStaffTab(tab) {
     document.getElementById('tabStaffDashboard').classList.add('active');
     document.getElementById('viewStaffDashboard').classList.remove('hidden');
     refreshStaffDashboard();
+  } else if (tab === 'queue') {
+    document.getElementById('tabStaffQueue').classList.add('active');
+    document.getElementById('viewStaffQueue').classList.remove('hidden');
+    loadWorkQueue();
   } else if (tab === 'bookings') {
     document.getElementById('tabStaffBookings').classList.add('active');
     document.getElementById('viewStaffBookings').classList.remove('hidden');
@@ -106,6 +150,10 @@ function switchStaffTab(tab) {
     document.getElementById('tabStaffMaster').classList.add('active');
     document.getElementById('viewStaffMaster').classList.remove('hidden');
     populateStaffMasterForms();
+  } else if (tab === 'skim') {
+    document.getElementById('tabStaffSkim').classList.add('active');
+    document.getElementById('viewStaffSkim').classList.remove('hidden');
+    updateRulesetBadges();
   }
 }
 
@@ -139,7 +187,6 @@ function populateBookingDropdowns() {
     cachedMovies.forEach(m => {
       selMovie.innerHTML += `<option value="${m.movieID}">${m.movieName} (${m.language} - ${m.genre})</option>`;
     });
-    // Default selection
     if (cachedMovies.length > 0) selMovie.value = cachedMovies[0].movieID;
   }
 
@@ -148,7 +195,6 @@ function populateBookingDropdowns() {
     cachedTheatres.forEach(t => {
       selTheatre.innerHTML += `<option value="${t.theatreID}">${t.theatreName} (${t.location})</option>`;
     });
-    // Default selection
     if (cachedTheatres.length > 0) selTheatre.value = cachedTheatres[0].theatreID;
   }
 
@@ -169,7 +215,7 @@ function onMovieOrTheatreChanged() {
   });
 
   filteredShows.forEach(s => {
-    selShow.innerHTML += `<option value="${s.showID}">${s.showDate} @ ${s.showTime} — ₹${s.ticketPrice} (${s.availableSeats} seats left)</option>`;
+    selShow.innerHTML += `<option value="${s.showID}">${s.showDate} @ ${s.showTime} — Base: ₹${s.ticketPrice} (${s.availableSeats} seats left)</option>`;
   });
 
   if (filteredShows.length > 0) {
@@ -189,6 +235,7 @@ async function handleStage1Submit(e) {
     customerName: document.getElementById('inputCustomerName').value.trim(),
     email: document.getElementById('inputCustomerEmail').value.trim(),
     mobileNumber: document.getElementById('inputCustomerPhone').value.trim(),
+    customerTier: document.getElementById('selectCustomerTier').value,
     movieID: document.getElementById('selectMovie').value,
     theatreID: document.getElementById('selectTheatre').value,
     showID: document.getElementById('selectShow').value,
@@ -211,13 +258,97 @@ async function handleStage1Submit(e) {
     currentCase = data.data;
     selectedSeatNumbers = [];
 
-    // Advance UI to Stage 2
+    // Pega Routing Check: If tickets > 4, case is routed to Manager Work Queue
+    if (currentCase.requiresManagerApproval) {
+      updateCaseHeader();
+      alertDiv.innerHTML = `
+        <div class="pega-alert alert-warning">
+          <div>
+            <strong>👥 Pega Routing: Routed to StaffReviewQueue@CineWave</strong>
+            <p style="margin-top:4px;">Because this booking requested <strong>${currentCase.numberOfTickets} tickets</strong> (> 4 bulk threshold), Case <strong>${currentCase.bookingID}</strong> requires Cinema Manager approval before seat selection.</p>
+            <p style="margin-top:4px; font-size:12px;">Switch to <strong>Staff Operator Portal &gt; Work Queue</strong> to approve or reject this case.</p>
+          </div>
+        </div>
+      `;
+      refreshCustomerData();
+      return;
+    }
+
+    // Standard route to Stage 2
     updateCaseHeader();
+    startSLATimer();
     await loadStage2SeatLayout();
     transitionToStageView(2);
 
   } catch (err) {
     alertDiv.innerHTML = `<div class="pega-alert alert-error">❌ Connection error: ${err.message}</div>`;
+  }
+}
+
+// -------------------------------------------------------------
+// Pega Service Level Agreement (SLA) Engine
+// -------------------------------------------------------------
+function startSLATimer() {
+  clearInterval(slaTimerInterval);
+  slaRemainingSeconds = 600; // 10 minutes
+  updateSLADisplay();
+
+  slaTimerInterval = setInterval(() => {
+    slaRemainingSeconds--;
+    updateSLADisplay();
+
+    if (slaRemainingSeconds <= 300 && currentCase.urgency < 30) {
+      // Goal passed
+      currentCase.urgency = 30;
+      updateCaseHeader();
+    }
+
+    if (slaRemainingSeconds <= 0) {
+      clearInterval(slaTimerInterval);
+      simulateExpireSLA();
+    }
+  }, 1000);
+}
+
+function updateSLADisplay() {
+  const fill = document.getElementById('slaProgressFill');
+  const txt = document.getElementById('slaTimerText');
+  if (!fill || !txt) return;
+
+  const mins = Math.floor(slaRemainingSeconds / 60);
+  const secs = slaRemainingSeconds % 60;
+  const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  txt.textContent = `${timeStr} remaining`;
+
+  const pct = Math.max(0, (slaRemainingSeconds / 600) * 100);
+  fill.style.width = `${pct}%`;
+
+  if (slaRemainingSeconds <= 180) {
+    fill.className = 'sla-progress-fill warning';
+  } else {
+    fill.className = 'sla-progress-fill';
+  }
+}
+
+async function simulateExpireSLA() {
+  if (!currentCase) return;
+  clearInterval(slaTimerInterval);
+
+  try {
+    const res = await fetch(`/api/cases/${currentCase.bookingID}/expire-sla`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      currentCase = data.data;
+      updateCaseHeader();
+      renderFinalCompletionView('TIMEOUT');
+      transitionToStageView('final');
+      await refreshCustomerData();
+    }
+  } catch (err) {
+    alert('SLA Expiry Error: ' + err.message);
   }
 }
 
@@ -292,10 +423,8 @@ function toggleSeatSelection(seatNumber) {
 
   const index = selectedSeatNumbers.indexOf(seatNumber);
   if (index > -1) {
-    // Unselect
     selectedSeatNumbers.splice(index, 1);
   } else {
-    // Select
     if (selectedSeatNumbers.length >= currentCase.numberOfTickets) {
       showAlert('stage2Alert', `⚠️ You requested ${currentCase.numberOfTickets} tickets. Deselect a seat before picking another.`, 'alert-warning');
       return;
@@ -360,12 +489,12 @@ function backToStage2() {
 }
 
 // -------------------------------------------------------------
-// STAGE 3: Customer Confirmation Summary
+// STAGE 3: Customer Confirmation Summary & Decision Table Card
 // -------------------------------------------------------------
 function populateStage3Summary() {
   document.getElementById('sumBookingID').textContent = currentCase.bookingID;
   document.getElementById('sumCustomerName').textContent = currentCase.customer.customerName;
-  document.getElementById('sumCustomerContact').textContent = `${currentCase.customer.email} · ${currentCase.customer.mobileNumber}`;
+  document.getElementById('sumCustomerTier').textContent = `${currentCase.customer.customerTier} Member`;
   document.getElementById('sumMovie').textContent = `${currentCase.movie.movieName} (${currentCase.movie.genre})`;
   document.getElementById('sumTheatre').textContent = `${currentCase.theatre.theatreName} (${currentCase.theatre.location})`;
   document.getElementById('sumShowTime').textContent = `${currentCase.show.showDate} at ${currentCase.show.showTime}`;
@@ -373,6 +502,18 @@ function populateStage3Summary() {
   document.getElementById('sumTickets').textContent = currentCase.numberOfTickets;
   document.getElementById('sumPricePerTicket').textContent = `₹${currentCase.ticketPrice}`;
   document.getElementById('sumTotalAmount').textContent = `₹${currentCase.totalAmount} (${currentCase.numberOfTickets} × ₹${currentCase.ticketPrice})`;
+  document.getElementById('sumRulesetVersion').textContent = currentCase.rulesetVersion;
+
+  // Decision Table Callout details
+  const dt = currentCase.decisionTableAudit;
+  if (dt) {
+    document.getElementById('dtValSeat').textContent = dt.seatType;
+    document.getElementById('dtValWeekend').textContent = dt.isWeekend ? 'Weekend (+₹30)' : 'Weekday (₹0)';
+    document.getElementById('dtValTier').textContent = dt.customerTier;
+    document.getElementById('dtValSurcharge').textContent = `+₹${dt.tierSurcharge + dt.weekendSurge}`;
+    document.getElementById('dtValDiscount').textContent = dt.discountPct > 0 ? `${dt.discountPct}% Off (-₹${dt.discountAmount})` : '0%';
+    document.getElementById('dtValFinal').textContent = `₹${dt.finalUnitPrice}`;
+  }
 }
 
 // -------------------------------------------------------------
@@ -381,6 +522,7 @@ function populateStage3Summary() {
 async function handleDecision(decision) {
   const alertDiv = document.getElementById('stage3Alert');
   alertDiv.innerHTML = '';
+  clearInterval(slaTimerInterval);
 
   try {
     const res = await fetch(`/api/cases/${currentCase.bookingID}/confirm`, {
@@ -398,11 +540,9 @@ async function handleDecision(decision) {
     currentCase = data.data;
     updateCaseHeader();
 
-    // Render Stage Final View
     renderFinalCompletionView(decision);
     transitionToStageView('final');
 
-    // Refresh background data
     await loadMasterData();
     await refreshCustomerData();
 
@@ -419,18 +559,30 @@ function renderFinalCompletionView(decision) {
     banner.innerHTML = `
       <div class="pega-alert alert-error">
         <div>
-          <h3 style="font-size: 16px; margin-bottom: 4px;">❌ Booking Cancelled</h3>
-          <p>Case <strong>${currentCase.bookingID}</strong> was cancelled by the customer. Any held seats have been released back to general availability.</p>
+          <h3 style="font-size: 16px; margin-bottom: 4px;">❌ Case Routed to Alternate Stage: Cancellation</h3>
+          <p>Booking ID <strong>${currentCase.bookingID}</strong> was cancelled. Reserved seats have been released back to general inventory.</p>
         </div>
       </div>
     `;
     btnViewEmail.classList.add('hidden');
+    highlightAlternateStage('chevronAltCancel');
+  } else if (decision === 'TIMEOUT') {
+    banner.innerHTML = `
+      <div class="pega-alert alert-warning">
+        <div>
+          <h3 style="font-size: 16px; margin-bottom: 4px;">⏱️ Case Routed to Alternate Stage: Seat Hold Timeout</h3>
+          <p>The 10-minute Pega SLA deadline expired before confirmation. Case <strong>${currentCase.bookingID}</strong> resolved as <strong>Resolved-Timeout</strong>. Any held seats were released.</p>
+        </div>
+      </div>
+    `;
+    btnViewEmail.classList.add('hidden');
+    highlightAlternateStage('chevronAltTimeout');
   } else {
     banner.innerHTML = `
       <div class="pega-alert alert-success">
         <div>
-          <h3 style="font-size: 16px; margin-bottom: 4px;">🎉 Case Completed & Booking Confirmed!</h3>
-          <p>Booking ID <strong>${currentCase.bookingID}</strong> is finalized! Seats <strong>${currentCase.selectedSeats.join(', ')}</strong> are reserved. An automated email confirmation has been dispatched to <strong>${currentCase.customer.email}</strong>.</p>
+          <h3 style="font-size: 16px; margin-bottom: 4px;">🎉 Primary Lifecycle Completed & Booking Confirmed!</h3>
+          <p>Booking ID <strong>${currentCase.bookingID}</strong> confirmed under <strong>${currentCase.rulesetVersion}</strong>! Seats <strong>${currentCase.selectedSeats.join(', ')}</strong> are reserved. Automated email dispatched to <strong>${currentCase.customer.email}</strong>.</p>
         </div>
       </div>
     `;
@@ -447,6 +599,7 @@ function renderFinalCompletionView(decision) {
         <td>${timeStr}</td>
         <td><strong>${h.action}</strong></td>
         <td><span class="status-badge ${getStatusBadgeClass(h.status)}">${h.status}</span></td>
+        <td><span class="urgency-badge ${h.urgency >= 30 ? 'urgency-high' : ''}">${h.urgency || 10}</span></td>
         <td>${h.user}</td>
         <td>${h.details || ''}</td>
       </tr>
@@ -455,11 +608,14 @@ function renderFinalCompletionView(decision) {
 }
 
 function startFreshBooking() {
+  clearInterval(slaTimerInterval);
   currentCase = null;
   selectedSeatNumbers = [];
   document.getElementById('caseDisplayId').textContent = 'CW-New (Draft)';
   document.getElementById('caseDisplayStatus').textContent = 'Booking Requested';
   document.getElementById('caseDisplayStatus').className = 'status-badge status-requested';
+  document.getElementById('caseDisplayUrgency').textContent = 'Urgency: 10';
+  document.getElementById('caseDisplayRoute').textContent = 'Route: pyWorkList';
   resetChevrons(1);
   transitionToStageView(1);
 }
@@ -485,6 +641,8 @@ function transitionToStageView(stage) {
     document.getElementById('stageViewFinal').classList.remove('hidden');
     if (currentCase.caseStatus === 'Cancelled') {
       markChevronsCancelled();
+    } else if (currentCase.caseStatus === 'Resolved-Timeout') {
+      markChevronsTimeout();
     } else {
       markAllChevronsCompleted();
     }
@@ -501,6 +659,8 @@ function resetChevrons(activeStageNum) {
       chevron.classList.add('active');
     }
   }
+  document.getElementById('chevronAltTimeout').style.boxShadow = 'none';
+  document.getElementById('chevronAltCancel').style.boxShadow = 'none';
 }
 
 function markAllChevronsCompleted() {
@@ -513,13 +673,24 @@ function markAllChevronsCompleted() {
 function markChevronsCancelled() {
   for (let i = 1; i <= 6; i++) {
     const chevron = document.getElementById(`chevronStage${i}`);
-    if (i <= 3) {
-      chevron.className = 'stage-chevron completed';
-    } else if (i === 4) {
-      chevron.className = 'stage-chevron cancelled';
-    } else {
-      chevron.className = 'stage-chevron';
-    }
+    chevron.className = 'stage-chevron';
+  }
+  highlightAlternateStage('chevronAltCancel');
+}
+
+function markChevronsTimeout() {
+  for (let i = 1; i <= 6; i++) {
+    const chevron = document.getElementById(`chevronStage${i}`);
+    chevron.className = 'stage-chevron';
+  }
+  highlightAlternateStage('chevronAltTimeout');
+}
+
+function highlightAlternateStage(altElementId) {
+  const alt = document.getElementById(altElementId);
+  if (alt) {
+    alt.style.boxShadow = '0 0 10px rgba(220, 38, 38, 0.6)';
+    alt.style.fontWeight = '800';
   }
 }
 
@@ -529,6 +700,16 @@ function updateCaseHeader() {
   const badge = document.getElementById('caseDisplayStatus');
   badge.textContent = currentCase.caseStatus;
   badge.className = `status-badge ${getStatusBadgeClass(currentCase.caseStatus)}`;
+
+  document.getElementById('caseDisplayUrgency').textContent = `Urgency: ${currentCase.urgency || 10}`;
+  if ((currentCase.urgency || 10) >= 30) {
+    document.getElementById('caseDisplayUrgency').className = 'urgency-badge urgency-high';
+  } else {
+    document.getElementById('caseDisplayUrgency').className = 'urgency-badge';
+  }
+
+  document.getElementById('caseDisplayRoute').textContent = `Route: ${currentCase.routedTo || 'pyWorkList'}`;
+  document.getElementById('caseRulesetVersion').textContent = `Ruleset: ${currentCase.rulesetVersion || 'CineWave:01-01-01'}`;
 }
 
 function getStatusBadgeClass(status) {
@@ -536,10 +717,12 @@ function getStatusBadgeClass(status) {
     case 'Booking Requested': return 'status-requested';
     case 'Availability Checked': return 'status-checked';
     case 'Awaiting Customer Confirmation': return 'status-awaiting';
+    case 'Pending-ManagerApproval': return 'status-awaiting';
     case 'Confirmed':
     case 'Notification Sent':
     case 'Completed': return 'status-completed';
-    case 'Cancelled': return 'status-cancelled';
+    case 'Cancelled':
+    case 'Resolved-Timeout': return 'status-cancelled';
     default: return 'status-requested';
   }
 }
@@ -557,8 +740,7 @@ async function refreshCustomerData() {
     const res = await fetch('/api/cases');
     const data = await res.json();
     if (data.success) {
-      const myCount = data.data.length;
-      document.getElementById('badgeMyBookingsCount').textContent = myCount;
+      document.getElementById('badgeMyBookingsCount').textContent = data.data.length;
     }
 
     const resNotif = await fetch('/api/notifications');
@@ -573,14 +755,14 @@ async function refreshCustomerData() {
 
 async function loadMyBookings() {
   const tbody = document.getElementById('myBookingsTableBody');
-  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Loading bookings...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">Loading bookings...</td></tr>';
 
   try {
     const res = await fetch('/api/cases');
     const data = await res.json();
 
     if (!data.success || data.data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">No bookings found. Click "New Booking" to create a case.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#94a3b8;">No bookings found. Click "New Booking" to create a case.</td></tr>';
       return;
     }
 
@@ -595,6 +777,7 @@ async function loadMyBookings() {
           <td>${c.show.showDate} ${c.show.showTime}</td>
           <td>${seatsStr}</td>
           <td><strong>₹${c.totalAmount || 0}</strong></td>
+          <td><span style="font-size:11px; font-family:monospace; color:#2563eb;">${c.rulesetVersion || '01-01-01'}</span></td>
           <td><span class="status-badge ${getStatusBadgeClass(c.caseStatus)}">${c.caseStatus}</span></td>
           <td>
             <button class="btn-pega btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="inspectCaseById('${c.bookingID}')">
@@ -605,7 +788,7 @@ async function loadMyBookings() {
       `;
     });
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:red;">Failed to load bookings: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="color:red;">Failed to load bookings: ${err.message}</td></tr>`;
   }
 }
 
@@ -617,7 +800,7 @@ async function inspectCaseById(caseID) {
       currentCase = data.data;
       updateCaseHeader();
       switchCustomerTab('new-case');
-      renderFinalCompletionView(currentCase.caseStatus === 'Cancelled' ? 'CANCEL' : 'CONFIRM');
+      renderFinalCompletionView(currentCase.caseStatus === 'Cancelled' ? 'CANCEL' : currentCase.caseStatus === 'Resolved-Timeout' ? 'TIMEOUT' : 'CONFIRM');
       transitionToStageView('final');
     }
   } catch (err) {
@@ -660,7 +843,7 @@ async function loadCustomerInbox() {
 }
 
 // -------------------------------------------------------------
-// Staff Portal Functions
+// Staff Portal Functions & Work Queue
 // -------------------------------------------------------------
 async function refreshStaffDashboard() {
   try {
@@ -669,9 +852,12 @@ async function refreshStaffDashboard() {
 
     if (!data.success) return;
 
-    const { kpis, bookingsByTheatre, bookingsByMovie, bookingsByDate } = data;
+    const { kpis, bookingsByTheatre, bookingsByMovie, bookingsByDate, pegaConfig } = data;
+    if (pegaConfig) {
+      pegaMetadata = pegaConfig;
+      updateRulesetBadges();
+    }
 
-    // Update KPIs
     document.getElementById('kpiTotalBookings').textContent = kpis.totalBookings;
     document.getElementById('kpiPendingBookings').textContent = kpis.pendingBookings;
     document.getElementById('kpiConfirmedBookings').textContent = kpis.confirmedBookings;
@@ -679,7 +865,8 @@ async function refreshStaffDashboard() {
     document.getElementById('kpiTotalRevenue').textContent = `₹${kpis.totalRevenue.toLocaleString()}`;
     document.getElementById('kpiAvailableSeats').textContent = kpis.totalAvailableSeats;
 
-    // Render Bar Charts
+    document.getElementById('badgeQueueCount').textContent = kpis.pendingApprovals || 0;
+
     renderBarChart('chartBookingsByTheatre', bookingsByTheatre, kpis.totalBookings);
     renderBarChart('chartBookingsByMovie', bookingsByMovie, kpis.totalBookings);
     renderBarChart('chartBookingsByDate', bookingsByDate, kpis.totalBookings);
@@ -717,6 +904,70 @@ function renderBarChart(containerId, dataMap, total) {
   });
 }
 
+// Work Queue: StaffReviewQueue@CineWave
+async function loadWorkQueue() {
+  const tbody = document.getElementById('workQueueTableBody');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Loading work queue...</td></tr>';
+
+  try {
+    const res = await fetch('/api/cases?workQueue=StaffReviewQueue@CineWave');
+    const data = await res.json();
+
+    const pendingList = (data.data || []).filter(c => c.caseStatus === 'Pending-ManagerApproval');
+
+    if (pendingList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">✅ Work queue is clear. No bulk bookings require manager approval.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    pendingList.forEach(c => {
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${c.bookingID}</strong></td>
+          <td>${c.customer.customerName} (${c.customer.customerTier})</td>
+          <td>${c.movie.movieName}</td>
+          <td>${c.theatre.theatreName}</td>
+          <td><strong style="color:#dc2626;">${c.numberOfTickets} tickets</strong></td>
+          <td><strong>₹${c.totalAmount}</strong></td>
+          <td><span class="urgency-badge">${c.urgency || 10}</span></td>
+          <td>
+            <button class="btn-pega btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="reviewManagerCase('${c.bookingID}', 'APPROVE')">
+              ✓ Approve
+            </button>
+            <button class="btn-pega btn-danger" style="padding: 4px 10px; font-size: 11px;" onclick="reviewManagerCase('${c.bookingID}', 'REJECT')">
+              ✕ Reject
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:red;">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function reviewManagerCase(caseID, action) {
+  try {
+    const res = await fetch(`/api/cases/${caseID}/manager-review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, managerNotes: `Reviewed by CinemaManager at ${new Date().toLocaleTimeString()}` })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      alert(`Case ${caseID} decision recorded: ${action}`);
+      await loadWorkQueue();
+      await refreshStaffDashboard();
+    } else {
+      alert(`Action failed: ${data.message}`);
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
 async function loadStaffBookings() {
   const filter = document.getElementById('staffFilterStatus').value;
   const tbody = document.getElementById('staffBookingsTableBody');
@@ -737,7 +988,7 @@ async function loadStaffBookings() {
     tbody.innerHTML = '';
     data.data.forEach(c => {
       const seatsStr = (c.selectedSeats && c.selectedSeats.length > 0) ? c.selectedSeats.join(', ') : 'None';
-      const canCancel = c.caseStatus !== 'Cancelled';
+      const canCancel = !['Cancelled', 'Resolved-Timeout'].includes(c.caseStatus);
       tbody.innerHTML += `
         <tr>
           <td><strong>${c.bookingID}</strong></td>
@@ -912,9 +1163,31 @@ async function handleCreateShow(e) {
   }
 }
 
-// -------------------------------------------------------------
+// Major Ruleset Skim
+async function performMajorSkim() {
+  if (!confirm(`Are you sure you want to perform a Pega Major Ruleset Skim? This will elevate the ruleset version from ${pegaMetadata.rulesetVersion} to the next major version.`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/major-skim', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.success) {
+      pegaMetadata = data.data;
+      updateRulesetBadges();
+      document.getElementById('skimResultAlert').innerHTML = `
+        <div class="pega-alert alert-success">
+          🎉 ${data.message}
+        </div>
+      `;
+    }
+  } catch (err) {
+    alert('Error executing Major Skim: ' + err.message);
+  }
+}
+
 // Modal Dialog: Email Viewer
-// -------------------------------------------------------------
 async function openEmailModalForCurrentCase() {
   if (!currentCase) return;
 

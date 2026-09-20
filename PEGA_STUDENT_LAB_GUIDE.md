@@ -1,60 +1,85 @@
 # CineWave Entertainment – Movie Ticket Booking Management
-## Comprehensive Pega Platform™ Implementation & Student Lab Guide
+## Comprehensive Pega Platform™ (Major Version Architecture) Implementation & Student Lab Guide
 
 **Application Name:** CineWave Entertainment  
-**Application Class Structure:** `CW-CineWave-Work-MovieBooking`  
+**Platform Version:** Pega Platform™ '24.1 Infinity (Built on Theme-Cosmos:05.01)  
+**Application Version:** `01.01.01` (Major: `01`, Minor: `01`, Patch: `01`)  
+**Ruleset Version:** `CineWave:01-01-01`  
+**Enterprise Class Structure:** `CW-CineWave-Work-MovieBooking`  
 **Case Type:** `Movie Ticket Booking` (Case Prefix: `CW-`)  
-**Pega UI Framework:** Pega Theme Cosmos / Constellation  
-**Target Audience:** Pega System Architects (CSA / CSSA), Business Architects, and Students  
+**Target Audience:** Pega System Architects (CSA / CSSA), Lead System Architects (LSA), Business Architects, and Students  
 
 ---
 
-## 1. Project Overview & Business Requirements
+## 1. Project Overview & Pega Major Architecture Pillars
 
-CineWave Entertainment manages movie ticket bookings across multiple theatres and locations. Previously, bookings were conducted through offline phone calls and emails, resulting in double-booking errors, lack of visibility into real-time seating availability, and delayed confirmations.
+CineWave Entertainment digitizes the movie ticket booking process across multiple theatres, regions, and formats. To build this at enterprise scale, the application incorporates the **Major Pillars of Pega Architecture**:
 
-This enterprise Pega application digitizes the complete end-to-end movie ticket booking lifecycle:
-1. Customers submit booking requests with contact details and movie preferences.
-2. The system checks show schedules and presents real-time seating layouts.
-3. Customers confirm their seats and review pricing before final commitment.
-4. The system validates seating availability, updates seat records to prevent race conditions, and marks bookings as Confirmed.
-5. Automated email correspondence is dispatched to the customer with full ticket vouchers.
-6. Staff and operations managers track booking cases, seat occupancy, and revenue reports via a dedicated portal.
+```mermaid
+flowchart TD
+    subgraph PegaMajorPillars [Pega Major Architectural Pillars]
+        ECS["1. Enterprise Class Structure (ECS)<br/>Org &rarr; App &rarr; WorkPool &rarr; Case"]
+        LIFECYCLE["2. Case Life Cycle & Alternate Stages<br/>Primary (1-6) + Alternate (Timeout, Cancel)"]
+        SLA["3. Service Level Agreements (SLA)<br/>Goal, Deadline, Passed Deadline, Urgency"]
+        DT["4. Decision Tables<br/>LookupPricing (Weekend, Tier, Surcharge)"]
+        ROUTING["5. Work Queues & Routing<br/>pyWorkList vs StaffReviewQueue"]
+        VERSIONING["6. Major Ruleset Skimming<br/>01-01-01 &rarr; 02-01-01 Major Skim"]
+    end
+```
 
 ---
 
-## 2. Enterprise Class Structure & Naming Conventions
+## 2. Enterprise Class Structure (ECS) & Naming Conventions
 
-Pega follows an inheritance model. For CineWave Entertainment, configure the following class layers:
+Pega’s inheritance mechanism uses the Enterprise Class Structure (ECS) to promote reuse and maintainability:
 
-| Layer | Class Name | Description |
+| ECS Layer | Class Name | Description & Inheritance |
 |---|---|---|
-| **Organization Layer** | `CW` | Base organization class |
-| **Application Layer** | `CW-CineWave` | Shared application rules and assets |
-| **Work Layer (Work Pool)** | `CW-CineWave-Work` | Base work pool for all case types |
-| **Case Type Class** | `CW-CineWave-Work-MovieBooking` | The "Movie Ticket Booking" case type |
-| **Data Layer** | `CW-CineWave-Data` | Top-level data class |
-| **Customer Data** | `CW-CineWave-Data-Customer` | Customer profile attributes |
-| **Movie Data** | `CW-CineWave-Data-Movie` | Movie catalog attributes |
-| **Theatre Data** | `CW-CineWave-Data-Theatre` | Cinema halls and locations |
-| **Show Data** | `CW-CineWave-Data-Show` | Schedules, timings, and ticket prices |
-| **Seat Data** | `CW-CineWave-Data-Seat` | Seat numbers, tiers, and statuses |
+| **Pega Platform Layer** | `@baseclass`, `Work-`, `Data-` | Out-of-the-box system foundation |
+| **Organization Layer** | `CW` | Base organization class for enterprise-wide assets |
+| **Application Layer** | `CW-CineWave` | Application-wide reusable assets |
+| **Work Pool (Implementation)** | `CW-CineWave-Work` | Base work class for all CineWave case types |
+| **Case Type Class** | `CW-CineWave-Work-MovieBooking` | The "Movie Ticket Booking" case type (`is-a Work-Cover-`) |
+| **Data Layer** | `CW-CineWave-Data` | Enterprise data layer (`is-a Data-`) |
+| **Customer Data** | `CW-CineWave-Data-Customer` | Customer profile attributes and tiers |
+| **Movie Data** | `CW-CineWave-Data-Movie` | Movie catalog metadata |
+| **Theatre Data** | `CW-CineWave-Data-Theatre` | Hall layouts and geographic locations |
+| **Show Data** | `CW-CineWave-Data-Show` | Schedules, timings, base ticket prices |
+| **Seat Data** | `CW-CineWave-Data-Seat` | Seat numbers, tiers (Standard, Premium, Recliner), statuses |
 
 ---
 
-## 3. Data Model & Data Types Setup
+## 3. Pega Ruleset Major Versioning & Skimming
+
+### 3.1 Ruleset Version Syntax: `NN-NN-NN`
+- **Major Version (`01-xx-xx`):** Substantial architectural overhaul, schema alterations, or major release milestones.
+- **Minor Version (`xx-01-xx`):** Intermediate feature additions, new sub-processes, or expanded capabilities.
+- **Patch Version (`xx-xx-01`):** Bug fixes, minor UI label adjustments, and defect resolutions.
+
+### 3.2 Major Skimming Procedure
+When transitioning from version `01` to `02`:
+1. Navigate to **Dev Studio > Configure > Application > Structure > Rule management > Ruleset Maintenance**.
+2. Select **Skim a RuleSet**.
+3. Choose **Major Version Skim** from `01-xx-xx` to `02-01-01`.
+4. Pega sweeps all rules in `01`, selects the highest version of each rule, and copies them cleanly into `02-01-01`.
+5. Update the Application Definition (`CineWave:02.01.01`).
+
+---
+
+## 4. Data Model & Data Types Setup
 
 Create the following 6 Pega Data Types in **App Studio > Data > Data objects and integrations** or **Dev Studio > Data Types**:
 
-### 3.1 Customer Data Type (`CW-CineWave-Data-Customer`)
+### 4.1 Customer Data Type (`CW-CineWave-Data-Customer`)
 | Field Name | Property Name | Type | Key / Required |
 |---|---|---|---|
 | Customer ID | `.CustomerID` | Text | Key |
 | Customer Name | `.CustomerName` | Text | Required |
 | Email Address | `.Email` | Email | Required |
 | Mobile Number | `.MobileNumber` | Phone | Required |
+| Membership Tier | `.CustomerTier` | Picklist (`Regular`, `VIP`, `Gold`) | Required |
 
-### 3.2 Movie Data Type (`CW-CineWave-Data-Movie`)
+### 4.2 Movie Data Type (`CW-CineWave-Data-Movie`)
 | Field Name | Property Name | Type | Key / Required |
 |---|---|---|---|
 | Movie ID | `.MovieID` | Text | Key |
@@ -65,7 +90,7 @@ Create the following 6 Pega Data Types in **App Studio > Data > Data objects and
 | Rating | `.Rating` | Decimal / Text | Optional |
 | Poster URL | `.PosterURL` | URL | Optional |
 
-### 3.3 Theatre Data Type (`CW-CineWave-Data-Theatre`)
+### 4.3 Theatre Data Type (`CW-CineWave-Data-Theatre`)
 | Field Name | Property Name | Type | Key / Required |
 |---|---|---|---|
 | Theatre ID | `.TheatreID` | Text | Key |
@@ -73,7 +98,7 @@ Create the following 6 Pega Data Types in **App Studio > Data > Data objects and
 | Location | `.Location` | Text | Required |
 | Total Seats | `.TotalSeats` | Integer | Required |
 
-### 3.4 Show Data Type (`CW-CineWave-Data-Show`)
+### 4.4 Show Data Type (`CW-CineWave-Data-Show`)
 | Field Name | Property Name | Type | Key / Required |
 |---|---|---|---|
 | Show ID | `.ShowID` | Text | Key |
@@ -81,11 +106,11 @@ Create the following 6 Pega Data Types in **App Studio > Data > Data objects and
 | Theatre Reference | `.Theatre` | Single Page (`CW-CineWave-Data-Theatre`) | Required |
 | Show Date | `.ShowDate` | Date | Required |
 | Show Time | `.ShowTime` | TimeOfDay / Text | Required |
-| Ticket Price | `.TicketPrice` | Currency | Required |
+| Base Ticket Price | `.TicketPrice` | Currency | Required |
 | Available Seats | `.AvailableSeats` | Integer | Calculated |
 | Total Seats | `.TotalSeats` | Integer | Required |
 
-### 3.5 Seat Data Type (`CW-CineWave-Data-Seat`)
+### 4.5 Seat Data Type (`CW-CineWave-Data-Seat`)
 | Field Name | Property Name | Type | Key / Required |
 |---|---|---|---|
 | Seat Number | `.SeatNumber` | Text | Key (e.g. A1, B5) |
@@ -93,315 +118,175 @@ Create the following 6 Pega Data Types in **App Studio > Data > Data objects and
 | Seat Type | `.SeatType` | Picklist (`Standard`, `Premium`, `Recliner`) | Required |
 | Seat Status | `.SeatStatus` | Picklist (`Available`, `Booked`, `Reserved`) | Required |
 
-### 3.6 Booking Case Properties (`CW-CineWave-Work-MovieBooking`)
-| Field Name | Property Name | Type | Usage |
+### 4.6 Booking Case Properties (`CW-CineWave-Work-MovieBooking`)
+| Field Name | Property Name | Type | Description |
 |---|---|---|---|
 | Booking ID | `.BookingID` | Text (pyID) | Auto-generated (`CW-10001`) |
-| Customer | `.Customer` | Single Page (`CW-CineWave-Data-Customer`) | Page reference |
-| Movie | `.Movie` | Single Page (`CW-CineWave-Data-Movie`) | Page reference |
-| Theatre | `.Theatre` | Single Page (`CW-CineWave-Data-Theatre`) | Page reference |
-| Show | `.Show` | Single Page (`CW-CineWave-Data-Show`) | Page reference |
-| Number of Tickets | `.NumberOfTickets` | Integer | User input (>= 1) |
+| Customer | `.Customer` | Single Page (`CW-CineWave-Data-Customer`) | Customer reference |
+| Movie | `.Movie` | Single Page (`CW-CineWave-Data-Movie`) | Selected movie |
+| Theatre | `.Theatre` | Single Page (`CW-CineWave-Data-Theatre`) | Selected cinema hall |
+| Show | `.Show` | Single Page (`CW-CineWave-Data-Show`) | Selected show |
+| Number of Tickets | `.NumberOfTickets` | Integer | Quantity (>= 1) |
 | Selected Seats | `.SelectedSeats` | Value List (Text) | e.g. `[A3, A4]` |
-| Ticket Price | `.TicketPrice` | Currency | Sourced from Show |
+| Base Price | `.BasePrice` | Currency | Sourced from Show |
+| Effective Ticket Price | `.TicketPrice` | Currency | Evaluated via Decision Table |
 | Total Amount | `.TotalAmount` | Currency | Declare Expression |
-| Booking Status | `.BookingStatus` | Text (`pyStatusWork`) | Lifecycle status |
-| Booking Date | `.BookingDate` | DateTime | Timestamp |
-| Confirmation Date | `.ConfirmationDate`| DateTime | Timestamp |
-| Customer Decision | `.CustomerDecision` | Text (`CONFIRM` / `CANCEL`) | Radio / Action |
+| Routed To | `.RoutedTo` | Text | `pyWorkList` or `StaffReviewQueue` |
+| Case Urgency | `.pxUrgencyWork` | Decimal | SLA Urgency (10 -> 30 -> 60) |
+| Ruleset Version | `.RulesetVersion` | Text | e.g. `CineWave:01-01-01` |
+| Booking Status | `.pyStatusWork` | Text | Case status |
 
 ---
 
-## 4. Pega Data Pages Configuration
+## 5. Case Life Cycle: Primary & Alternate Stages
 
-Data Pages provide declarative, on-demand data caching and retrieval:
-
-1. **`D_MovieList`**:
-   - **Scope:** Node / Thread
-   - **Object Type:** `CW-CineWave-Data-Movie`
-   - **Data Structure:** List
-   - **Source:** Lookup or Report Definition on `CW-CineWave-Data-Movie`
-   - **Usage:** Populates the movie selection dropdown in Stage 1.
-
-2. **`D_TheatreList`**:
-   - **Scope:** Thread
-   - **Parameters:** `Location` (Optional)
-   - **Source:** Report Definition filtered by `.Location`
-   - **Usage:** Populates theatre selection dropdown.
-
-3. **`D_ShowList`**:
-   - **Scope:** Thread
-   - **Parameters:** `MovieID`, `TheatreID`, `Date`
-   - **Source:** Report Definition on `CW-CineWave-Data-Show`
-   - **Usage:** Dynamically filters available shows for selected movie and theatre.
-
-4. **`D_SeatAvailability`**:
-   - **Scope:** Thread
-   - **Parameters:** `ShowID`
-   - **Object Type:** `CW-CineWave-Data-Seat`
-   - **Data Structure:** List
-   - **Source:** Report Definition returning all seats where `.ShowID == param.ShowID`.
-
----
-
-## 5. Case Life Cycle Configuration
-
-Open **App Studio > Case types > Movie Ticket Booking** or **Dev Studio > Case Type Record**.
-
-Configure the **6 Primary Stages** with their processes and steps:
+Pega separates business operations into **Primary Stages** (the happy path) and **Alternate Stages** (exception handling, SLA expirations, cancellations):
 
 ```
+========================= PRIMARY STAGES =========================
 [ Stage 1: Booking Request ]
-  └── Process: Collect Customer Details
-        └── Step 1: Collect Information (View: EnterBookingDetails)
-        └── Step 2: Automation (Data Transform: InitBooking)
+  └── Process: Capture Customer & Preferences
+        ├── Step: Collect Info (View: EnterBookingDetails)
+        └── Step: Routing Check (Tickets > 4 &rarr; StaffReviewQueue@CineWave)
 
 [ Stage 2: Check Show & Seat Availability ]
-  └── Process: Seat Selection
-        └── Step 1: User Action (View: SelectSeatsView)
-        └── Step 2: Validate (Validate Rule: ValidateSeatSelection)
+  └── Process: Seat Selection & SLA
+        ├── Step: User Action (View: SelectSeatsView)
+        ├── SLA: SeatHoldSLA (Goal: 5m [+20 urgency], Deadline: 10m [Route to Alt Stage])
+        └── Step: Decision Table (LookupPricing applied to selected tier)
 
 [ Stage 3: Customer Confirmation ]
-  └── Process: Confirm Or Cancel
-        └── Step 1: User Action (View: ReviewBookingSummary)
-        └── Step 2: Decision Fork (When: CustomerConfirmed vs CustomerCancelled)
+  └── Process: Review Summary & Pricing Breakdown
+        ├── Step: View Summary (View: ReviewBookingSummary)
+        └── Step: Decision Shape (Customer Decision)
 
 [ Stage 4: Booking Processing ]
-  └── Process: Seat Reservation
-        └── Step 1: Automation (Data Transform: ReserveSeats OR CancelBooking)
-        └── Step 2: Set Case Status ("Confirmed" OR "Cancelled")
+  └── Process: Reserve Seats
+        ├── Step: Automation (ReserveSeats Data Transform)
+        └── Step: Update Status ("Confirmed")
 
 [ Stage 5: Notification ]
-  └── Process: Send Customer Email
-        └── Step 1: Automation (Send Email: BookingConfirmationNotification)
+  └── Process: Dispatched Correspondence
+        └── Step: Send Email (CorrType: EMAIL, BookingConfirmationNotification)
 
 [ Stage 6: Case Completion ]
-  └── Process: Resolve Case
-        └── Step 1: Update Status ("Completed")
-        └── Step 2: Resolution (Resolved-Completed)
-```
+  └── Process: Resolution
+        └── Step: Update Status ("Completed" / Resolved-Completed)
 
-### 5.1 Detailed Stage Configuration
+======================== ALTERNATE STAGES ========================
+[ Alternate Stage A: Seat Hold Timeout (SLA Expiry) ]
+  └── Triggered When: SLA Deadline (10 mins) elapses without confirmation
+  └── Process:
+        ├── Step: Release temporary held seats
+        ├── Step: Update Urgency to 60
+        └── Step: Resolve Case as "Resolved-Timeout"
 
-#### Stage 1: Booking Request
-- **Stage Name:** `Booking Request`
-- **Initial Case Status:** `Booking Requested`
-- **Step 1:** Collect Information (View: `EnterBookingDetails`)
-  - Capture `.Customer.CustomerName`, `.Customer.Email`, `.Customer.MobileNumber`
-  - Capture `.Movie.MovieID`, `.Theatre.TheatreID`, `.Show.ShowID`, `.NumberOfTickets`
-- **Step 2:** Data Transform (`InitBooking`)
-  - Set `.BookingDate = @CurrentDateTime()`
-  - Set `.TicketPrice = D_ShowList[ShowID:.Show.ShowID].TicketPrice`
-
-#### Stage 2: Check Show & Seat Availability
-- **Stage Name:** `Check Show & Seat Availability`
-- **Case Status:** `Availability Checked`
-- **Step 1:** View `SelectSeatsView`
-  - Reference Data Page `D_SeatAvailability[ShowID: .Show.ShowID]`
-  - Render seating matrix grid with Row identifiers (A through E) and Seat columns (1 through 10)
-  - Color-code seats: Green (Available), Red (Booked), Blue (Selected)
-- **Step 2:** Validation Rule (`ValidateSeatSelection`)
-  - Check: `LengthOfList(.SelectedSeats) == .NumberOfTickets`
-  - Check: None of the selected seats have `.SeatStatus == "Booked"`
-
-#### Stage 3: Customer Confirmation
-- **Stage Name:** `Customer Confirmation`
-- **Case Status:** `Awaiting Customer Confirmation`
-- **Step 1:** View `ReviewBookingSummary`
-  - Display read-only summary card: Movie Title, Theatre Name, Location, Show Date/Time, Selected Seats list, Number of Tickets, Ticket Price, and Total Amount.
-  - Action buttons / Radio choices:
-    - Choice A: `Confirm Booking` (`.CustomerDecision = "CONFIRM"`)
-    - Choice B: `Cancel Booking` (`.CustomerDecision = "CANCEL"`)
-
-#### Stage 4: Booking Processing
-- **Stage Name:** `Booking Processing`
-- **Decision Shape:** Evaluates `.CustomerDecision`
-  - **Path A (CONFIRM):**
-    - Data Transform: `ReserveSeats` (iterates over `.SelectedSeats` and updates `.SeatStatus = "Booked"`)
-    - Set Case Status: `Confirmed`
-    - Set `.ConfirmationDate = @CurrentDateTime()`
-  - **Path B (CANCEL):**
-    - Data Transform: `CancelBooking`
-    - Set Case Status: `Cancelled`
-    - Resolve Case as `Resolved-Cancelled` (Jump to Stage 6)
-
-#### Stage 5: Notification
-- **Stage Name:** `Notification`
-- **Condition:** Run only if `.CustomerDecision == "CONFIRM"`
-- **Step 1:** Automation `Send Email`
-  - **Recipient:** `.Customer.Email`
-  - **Subject:** `Booking Confirmed: CineWave Entertainment [.BookingID]`
-  - **Correspondence Rule:** `BookingConfirmationNotification` (HTML template with complete booking receipt)
-
-#### Stage 6: Case Completion
-- **Stage Name:** `Case Completion`
-- **Case Status:** `Completed`
-- **Resolution:** `Resolved-Completed`
-- **Audit:** Automatic audit entry added to `pyHistory`
-
----
-
-## 6. Business Rules & Declarative Logic
-
-In **Dev Studio**, create the following business rules:
-
-### 6.1 Declare Expression: Total Amount Calculation
-- **Applies To:** `CW-CineWave-Work-MovieBooking`
-- **Target Property:** `.TotalAmount`
-- **Expression:** `.NumberOfTickets * .TicketPrice`
-- **Change Tracking:** Calculate value whenever inputs change (Automatic).
-
-### 6.2 Validate Rule: `ValidateSeatSelection`
-- **Applies To:** `CW-CineWave-Work-MovieBooking`
-- **Conditions:**
-  1. **Seat Count Check:**
-     - Expression: `LengthOfList(.SelectedSeats) != .NumberOfTickets`
-     - Error Message: *"The number of selected seats must equal the number of requested tickets."*
-  2. **Seat Availability Check:**
-     - Expression: Iterate `.SelectedSeats`. If seat status is not Available:
-     - Error Message: *"One or more selected seats are already booked. Please modify your selection."*
-
-### 6.3 When Rules:
-- **`CustomerConfirmed`**: `.CustomerDecision = "CONFIRM"`
-- **`CustomerCancelled`**: `.CustomerDecision = "CANCEL"`
-
----
-
-## 7. Email Correspondence Rule Setup
-
-Create a Correspondence rule in **Dev Studio > Technical > Correspondence**:
-- **Name:** `BookingConfirmationNotification`
-- **Applies To:** `CW-CineWave-Work-MovieBooking`
-- **Correspondence Type:** `EMAIL`
-- **Template Body (HTML):**
-
-```html
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #d3dbe3; border-radius: 8px; overflow: hidden;">
-  <div style="background-color: #002244; color: #ffffff; padding: 20px; text-align: center;">
-    <h2 style="margin: 0;">🎬 CineWave Entertainment</h2>
-    <p style="margin: 5px 0 0 0; color: #8bbcef; font-size: 14px;">Movie Ticket Booking Confirmation</p>
-  </div>
-  <div style="padding: 24px; color: #222222;">
-    <p>Dear <strong><pega:reference name=".Customer.CustomerName"/></strong>,</p>
-    <p>Your movie ticket booking has been successfully confirmed. Below are your booking details:</p>
-    
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Booking ID:</td><td style="padding: 8px; font-weight: bold;"><pega:reference name=".BookingID"/></td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Movie:</td><td style="padding: 8px; font-weight: bold;"><pega:reference name=".Movie.MovieName"/></td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Theatre:</td><td style="padding: 8px; font-weight: bold;"><pega:reference name=".Theatre.TheatreName"/> (<pega:reference name=".Theatre.Location"/>)</td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Show Date & Time:</td><td style="padding: 8px; font-weight: bold;"><pega:reference name=".Show.ShowDate"/> at <pega:reference name=".Show.ShowTime"/></td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Selected Seats:</td><td style="padding: 8px; font-weight: bold; color: #0060cc;"><pega:reference name=".SelectedSeats"/></td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Number of Tickets:</td><td style="padding: 8px; font-weight: bold;"><pega:reference name=".NumberOfTickets"/></td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; color: #64748b;">Ticket Price:</td><td style="padding: 8px; font-weight: bold;">₹<pega:reference name=".TicketPrice"/></td></tr>
-      <tr style="background-color: #f1f5f9;"><td style="padding: 8px; font-weight: bold; color: #002244;">Total Amount Paid:</td><td style="padding: 8px; font-weight: bold; color: #0060cc; font-size: 16px;">₹<pega:reference name=".TotalAmount"/></td></tr>
-      <tr><td style="padding: 8px; color: #64748b;">Status:</td><td style="padding: 8px; font-weight: bold; color: #0d8a43;">Confirmed</td></tr>
-    </table>
-
-    <p style="font-size: 12px; color: #64748b;">Please present this digital confirmation or your Booking ID at the cinema entrance. Enjoy the movie!</p>
-  </div>
-  <div style="background-color: #f8fafc; padding: 12px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
-    &copy; 2026 CineWave Entertainment. All rights reserved.
-  </div>
-</div>
+[ Alternate Stage B: Cancellation ]
+  └── Triggered When: Customer clicks Cancel OR Manager Rejects bulk request
+  └── Process:
+        ├── Step: Release any held seats
+        └── Step: Resolve Case as "Cancelled" (Resolved-Cancelled)
 ```
 
 ---
 
-## 8. Reports & Analytics Configuration
+## 6. Service Level Agreements (SLA) & Urgency
 
-Create the following Report Definitions in **Dev Studio > Reports > Report Definition** under class `CW-CineWave-Work-MovieBooking`:
-
-1. **`TotalBookingsSummary`**:
-   - **Columns:** `.BookingID`, `.Customer.CustomerName`, `.Movie.MovieName`, `.Theatre.TheatreName`, `.TotalAmount`, `.BookingStatus`
-   - **Filter:** `.pyStatusWork != ""`
-
-2. **`BookingsByTheatre`**:
-   - **Summarized Column:** `Count(.BookingID)`
-   - **Group By:** `.Theatre.TheatreName`
-   - **Chart:** Vertical Bar Chart
-
-3. **`BookingsByMovie`**:
-   - **Summarized Column:** `Count(.BookingID)`
-   - **Group By:** `.Movie.MovieName`
-   - **Chart:** Pie / Donut Chart
-
-4. **`BookingsByDate`**:
-   - **Summarized Column:** `Count(.BookingID)`
-   - **Group By:** `Date(.BookingDate)`
-   - **Chart:** Trend / Line Chart
+Create the SLA rule in **Dev Studio > Process > Service Level Agreement**:
+- **Name:** `SeatHoldSLA`
+- **Applies To:** `CW-CineWave-Work-MovieBooking`
+- **Initial Urgency:** `10`
+- **Milestones:**
+  - **Goal:**
+    - Time: `5 minutes`
+    - Urgency Increment: `+20` (Total Urgency: `30`)
+    - Action: Log warning in audit trail (`Goal passed - urgency elevated`).
+  - **Deadline:**
+    - Time: `10 minutes`
+    - Urgency Increment: `+30` (Total Urgency: `60`)
+    - Action: Execute activity `pzRouteToAlternateStage` (`Seat Hold Timeout`), release seats, update status to `Resolved-Timeout`.
 
 ---
 
-## 9. Comprehensive Student Lab Test Scenarios
+## 7. Pega Decision Table: `LookupPricing`
 
-### Scenario 1: Successful End-to-End Booking (Happy Path)
-1. **Goal:** Verify complete lifecycle progression from draft request to completed case with notification.
-2. **Steps:**
-   - Go to Customer Portal > Click **+ New Booking**.
-   - Enter Customer Name: `Rahul Verma`, Email: `rahul.verma@example.com`, Mobile: `9845012345`.
-   - Select Movie: `Inception`, Theatre: `CineWave Central`, Show: `20-Sep-2026 at 07:30 PM`.
-   - Enter Number of Tickets: `2`.
-   - Click **Continue to Seat Selection**.
-   - In Stage 2, select seats `A3` and `A4`. Verify counter shows `2 / 2 tickets`.
-   - Click **Proceed to Confirmation Summary**.
-   - In Stage 3, verify summary details: Movie, Theatre, Seats `A3, A4`, Price `₹200`, Total Amount `₹400`.
-   - Click **Confirm Booking**.
-3. **Expected Results:**
-   - Chevron progresses through Processing, Notification, and Completion.
-   - Status updates to `Completed`.
-   - Case ID generated: `CW-10001`.
-   - Audit trail shows: Case Created → Seats Selected → Confirmation Received → Booking Processed → Email Dispatched → Resolved-Completed.
-   - Click **View Dispatched Email Notification** to verify email contents.
+Create the Decision Table in **Dev Studio > Decision > Decision Table**:
+- **Name:** `LookupPricing`
+- **Applies To:** `CW-CineWave-Work-MovieBooking`
+- **Inputs (Conditions):**
+  - `.SelectedSeatType` (Standard, Premium, Recliner)
+  - `.IsWeekend` (True / False)
+  - `.Customer.CustomerTier` (Regular, VIP, Gold)
+- **Outputs (Actions):**
+  - `SurchargeAmount` (Currency)
+  - `DiscountPercentage` (Integer)
 
----
-
-### Scenario 2: Seat Count Mismatch Validation
-1. **Goal:** Verify Business Rule 2 (Selected seats must equal requested tickets).
-2. **Steps:**
-   - Create a booking for `3 tickets`.
-   - In Stage 2, select only 2 seats (`B1`, `B2`).
-   - Click **Proceed to Confirmation Summary**.
-3. **Expected Results:**
-   - Pega validation error displays: *"The number of selected seats must equal the number of requested tickets (Selected: 2, Requested: 3)."*
-   - System prevents advancing to Stage 3 until exactly 3 seats are selected.
+### Decision Table Logic Matrix:
+| .SelectedSeatType | .IsWeekend | .Customer.CustomerTier | SurchargeAmount | DiscountPercentage |
+|---|---|---|---|---|
+| `"Standard"` | `false` | `"Regular"` | `0` | `0%` |
+| `"Standard"` | `true` | `"Regular"` | `30` | `0%` |
+| `"Standard"` | `_` | `"VIP"` | `0` (or weekend +30) | `15%` |
+| `"Standard"` | `_` | `"Gold"` | `0` (or weekend +30) | `25%` |
+| `"Premium"` | `_` | `"Regular"` | `50` | `0%` |
+| `"Premium"` | `_` | `"VIP"` | `50` | `15%` |
+| `"Recliner"` | `_` | `_` | `150` | `_` |
 
 ---
 
-### Scenario 3: Already-Booked Seat Selection Prevention
-1. **Goal:** Verify Business Rule 3 & 8 (Cannot book an already booked seat).
-2. **Steps:**
-   - In Show `SH-201`, seat `A1` is already booked (pre-seeded).
-   - In Stage 2, attempt to click seat `A1`.
-3. **Expected Results:**
-   - Seat `A1` is disabled and colored dark gray/red.
-   - Alert informs: *"Seat A1 is already booked! Please select an available seat."*
-   - Seat cannot be added to selection.
+## 8. Pega Routing & Work Queues
+
+Pega provides two primary routing mechanisms:
+1. **`pyWorkList` (Personal Worklist):** Assignments routed directly to a named operator (e.g. the customer).
+2. **`ToWorkQueue` (Work Queue):** Shared pool of work accessible to operators with the appropriate skills or role.
+
+### Bulk Booking Routing Business Rule:
+- **Condition:** `If .NumberOfTickets > 4`
+- **Router:** `ToWorkQueue("StaffReviewQueue@CineWave")`
+- **Status:** `Pending-ManagerApproval`
+- **Access Role Required:** `CineWave:Manager` (Privilege: `CanApproveBulkBookings`)
+- When approved, case is routed back to `pyWorkList` for seat selection.
 
 ---
 
-### Scenario 4: Customer Cancellation Before Confirmation
-1. **Goal:** Verify Business Rule 5 (Customer cancellation releases hold and cancels case).
-2. **Steps:**
-   - Request 1 ticket for `Inception`.
-   - Select seat `B9`.
-   - Proceed to Stage 3 (Customer Confirmation Summary).
-   - Click **Cancel Booking**.
-3. **Expected Results:**
-   - Case status immediately transitions to `Cancelled`.
-   - Stage 4 shows Cancelled status; Stage 5 notification is bypassed.
-   - Seat `B9` remains `Available` for other customers.
+## 9. Role-Based Access Control (RBAC)
+
+In Pega, security is defined by **Access Groups**, **Access Roles**, and **Privileges**:
+
+| Access Group | Portal | Roles | Privileges |
+|---|---|---|---|
+| `CineWave:CustomerUser` | `CustomerPortal` | `CineWave:User` | Create booking, confirm/cancel own booking |
+| `CineWave:StaffOperator` | `StaffPortal` | `CineWave:Operator` | View ledger, inspect seat layouts, cancel booking |
+| `CineWave:CinemaManager` | `StaffPortal` | `CineWave:Manager` | Approve bulk bookings, perform Major Ruleset Skim |
 
 ---
 
-### Scenario 5: Staff Management & Live Reports Verification
-1. **Goal:** Verify Staff Portal dashboards, reports, and administrative seat release.
-2. **Steps:**
-   - Switch to **Staff Operator Portal** from the top masthead.
-   - Review KPI metrics: Total Bookings, Pending, Confirmed, Cancelled, Total Revenue, Available Seats.
-   - Inspect **Bookings by Theatre** and **Bookings by Movie** charts.
-   - Navigate to **Show Seat Inspector**: select `Inception - CineWave Central` and verify visual seat occupancy rate.
-   - Navigate to **Manage Bookings**, locate a confirmed booking, and click **Cancel Booking** as staff.
-3. **Expected Results:**
-   - Case updates to `Cancelled`.
-   - Show seats are immediately freed and available for new bookings.
-   - Dashboard KPIs update automatically.
+## 10. Comprehensive Verification & Lab Scenarios
+
+### Scenario 1: Primary Lifecycle Happy Path under Ruleset Major 01
+1. Customer initiates booking for 2 tickets with `VIP` membership.
+2. System evaluates `LookupPricing` Decision Table (applies 15% VIP discount).
+3. Customer selects seats `A3, A4`.
+4. Confirmation received before SLA Goal/Deadline.
+5. System confirms reservation, dispatches email correspondence, marks case `Completed` under `CineWave:01-01-01`.
+
+### Scenario 2: Work Queue Routing for Bulk Orders
+1. Customer requests `5 tickets` (> 4 bulk threshold).
+2. Pega router automatically sets status to `Pending-ManagerApproval` and routes case to `StaffReviewQueue@CineWave`.
+3. Cinema Manager reviews case in the Staff Portal and clicks **Approve**.
+4. Case routes back to customer worklist to proceed with seat selection.
+
+### Scenario 3: SLA Deadline Expiration & Alternate Stage
+1. Customer initiates booking and selects seat `B3`.
+2. Customer is idle past the 10-minute SLA deadline (simulated via **Fast-Forward SLA** button).
+3. Pega SLA engine elevates urgency to `60`, releases seat `B3`, and routes case to **Alternate Stage: Seat Hold Timeout** with status `Resolved-Timeout`.
+
+### Scenario 4: Customer Cancellation to Alternate Stage
+1. Customer selects seats and reviews summary in Stage 3.
+2. Customer clicks **Cancel Booking**.
+3. Case routes to **Alternate Stage: Cancellation**, releases reserved seats, and updates status to `Cancelled`.
+
+### Scenario 5: Pega Major Ruleset Skim (`01-01-01` &rarr; `02-01-01`)
+1. In Staff Portal > **Pega Major Ruleset Skim**, Manager clicks **Perform Pega Major Ruleset Skim**.
+2. Ruleset version elevates to `CineWave:02-01-01` (Major `02`).
+3. Subsequent new cases inherit the new major version `CineWave:02-01-01`.

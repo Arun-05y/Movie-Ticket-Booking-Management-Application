@@ -946,6 +946,162 @@ body {
   background: #fafafa;
 }
 
+/* --- Pega Major Styling Enhancements --- */
+.ruleset-badge {
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  color: #ffffff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.urgency-badge {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.urgency-high {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+  animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Alternate Stages Bar */
+.stage-alternate-bar {
+  display: flex;
+  background: #f8fafc;
+  border-bottom: 2px dashed #cbd5e1;
+  padding: 8px 16px;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.stage-chevron.alternate {
+  border-left: 2px dashed #94a3b8;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.stage-chevron.alternate-timeout {
+  background: #ffedd5;
+  color: #9a3412;
+  border-color: #fdba74;
+}
+
+.stage-chevron.alternate-cancel {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+/* SLA Progress Component */
+.sla-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sla-progress-track {
+  flex: 1;
+  min-width: 200px;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.sla-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #f59e0b);
+  border-radius: 4px;
+  transition: width 1s linear;
+}
+
+.sla-progress-fill.warning {
+  background: #ef4444;
+}
+
+.sla-timer-text {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+/* Decision Table Viewer */
+.decision-table-callout {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid var(--pega-blue);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-top: 1rem;
+  font-size: 12px;
+}
+
+.dt-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.dt-matrix th {
+  background: #e2e8f0;
+  padding: 6px 8px;
+  text-align: left;
+  color: #334155;
+}
+
+.dt-matrix td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dt-active-row {
+  background: #dbeafe !important;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+/* Work Queue Card */
+.work-queue-badge {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 /* Utility */
 .hidden {
   display: none !important;

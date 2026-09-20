@@ -13,6 +13,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In-memory data store with disk persistence for realism
 const DATA_FILE = path.join(__dirname, 'data_store.json');
 
+// Pega Major Architecture Configuration
+const PEGA_CONFIG = {
+  platformVersion: '24.1 Infinity',
+  builtOnApplication: 'Theme-Cosmos:05.01',
+  applicationName: 'CineWave Entertainment',
+  applicationVersion: '01.01.01',
+  majorVersion: '01',
+  minorVersion: '01',
+  patchVersion: '01',
+  rulesetName: 'CineWave',
+  rulesetVersion: 'CineWave:01-01-01',
+  classHierarchy: {
+    org: 'CW',
+    app: 'CW-CineWave',
+    workPool: 'CW-CineWave-Work',
+    caseType: 'CW-CineWave-Work-MovieBooking',
+    data: 'CW-CineWave-Data'
+  },
+  accessGroups: [
+    { name: 'CineWave:CustomerUser', portal: 'CustomerPortal', role: 'Customer', defaultUrgency: 10 },
+    { name: 'CineWave:StaffOperator', portal: 'StaffPortal', role: 'Operator', defaultUrgency: 20 },
+    { name: 'CineWave:CinemaManager', portal: 'StaffPortal', role: 'Manager', defaultUrgency: 30 }
+  ]
+};
+
 // Default Seed Data
 const DEFAULT_MOVIES = [
   {
@@ -180,7 +205,42 @@ function seedInitialBookedSeats(seats, showID) {
   return seats;
 }
 
+// Pega Decision Table Engine: LookupTicketPriceAndDiscount
+function evaluatePegaDecisionTable(seatType, showDate, customerTier = 'Regular', basePrice = 200) {
+  const dateObj = new Date(showDate);
+  const day = dateObj.getDay();
+  const isWeekend = (day === 0 || day === 6); // Sun = 0, Sat = 6
+
+  let tierSurcharge = 0;
+  if (seatType === 'Premium') tierSurcharge = 50;
+  else if (seatType === 'Recliner') tierSurcharge = 150;
+
+  let weekendSurge = isWeekend ? 30 : 0;
+  let discountPct = 0;
+
+  if (customerTier === 'VIP') discountPct = 15;
+  else if (customerTier === 'Gold') discountPct = 25;
+
+  const rawUnit = basePrice + tierSurcharge + weekendSurge;
+  const discountAmount = Math.round(rawUnit * (discountPct / 100));
+  const finalUnitPrice = rawUnit - discountAmount;
+
+  return {
+    seatType,
+    isWeekend,
+    customerTier,
+    basePrice,
+    tierSurcharge,
+    weekendSurge,
+    discountPct,
+    discountAmount,
+    finalUnitPrice,
+    decisionRuleApplied: `Rule-Declare-DecisionTable: LookupPricing [${seatType} | Weekend:${isWeekend} | ${customerTier}]`
+  };
+}
+
 let db = {
+  pegaConfig: { ...PEGA_CONFIG },
   caseCounter: 10001,
   movies: DEFAULT_MOVIES,
   theatres: DEFAULT_THEATRES,
@@ -197,18 +257,23 @@ DEFAULT_SHOWS.forEach(show => {
   db.seatsByShow[show.showID] = seats;
 });
 
-// Seed sample historical bookings
+// Seed sample historical booking
 const sampleHistoricalBooking = {
   bookingID: 'CW-10000',
   caseID: 'CW-10000',
   caseStatus: 'Completed',
   currentStage: 'Stage 6 – Case Completion',
   stageNumber: 6,
+  isAlternateStage: false,
+  alternateStageName: null,
+  urgency: 10,
+  rulesetVersion: 'CineWave:01-01-01',
   customer: {
     customerID: 'CUST-901',
     customerName: 'Priya Sharma',
     email: 'priya.sharma@example.com',
-    mobileNumber: '9876543210'
+    mobileNumber: '9876543210',
+    customerTier: 'VIP'
   },
   movie: {
     movieID: 'MOV-101',
@@ -228,15 +293,22 @@ const sampleHistoricalBooking = {
   selectedSeats: ['A1', 'A2'],
   ticketPrice: 200,
   totalAmount: 400,
+  routedTo: 'pyWorkList',
+  sla: {
+    goalSeconds: 300,
+    deadlineSeconds: 600,
+    elapsedSeconds: 120,
+    status: 'Satisfied'
+  },
   bookingDate: '2026-09-18T14:30:00.000Z',
   confirmationDate: '2026-09-18T14:32:00.000Z',
   history: [
-    { timestamp: '2026-09-18T14:30:00.000Z', action: 'Case Created', status: 'Booking Requested', user: 'Priya Sharma' },
-    { timestamp: '2026-09-18T14:31:00.000Z', action: 'Seats Selected [A1, A2]', status: 'Availability Checked', user: 'Priya Sharma' },
-    { timestamp: '2026-09-18T14:32:00.000Z', action: 'Customer Confirmation Received', status: 'Awaiting Customer Confirmation', user: 'Priya Sharma' },
-    { timestamp: '2026-09-18T14:32:10.000Z', action: 'Booking Processed & Seats Reserved', status: 'Confirmed', user: 'System' },
-    { timestamp: '2026-09-18T14:32:15.000Z', action: 'Email Notification Sent', status: 'Notification Sent', user: 'System' },
-    { timestamp: '2026-09-18T14:32:20.000Z', action: 'Case Resolved-Completed', status: 'Completed', user: 'System' }
+    { timestamp: '2026-09-18T14:30:00.000Z', action: 'Case Created (01-01-01)', status: 'Booking Requested', user: 'Priya Sharma', urgency: 10 },
+    { timestamp: '2026-09-18T14:31:00.000Z', action: 'Seats Selected [A1, A2]', status: 'Availability Checked', user: 'Priya Sharma', urgency: 10 },
+    { timestamp: '2026-09-18T14:32:00.000Z', action: 'Customer Confirmation Received', status: 'Awaiting Customer Confirmation', user: 'Priya Sharma', urgency: 10 },
+    { timestamp: '2026-09-18T14:32:10.000Z', action: 'Booking Processed & Seats Reserved', status: 'Confirmed', user: 'System', urgency: 10 },
+    { timestamp: '2026-09-18T14:32:15.000Z', action: 'Email Notification Sent', status: 'Notification Sent', user: 'System', urgency: 10 },
+    { timestamp: '2026-09-18T14:32:20.000Z', action: 'Case Resolved-Completed', status: 'Completed', user: 'System', urgency: 10 }
   ]
 };
 db.cases.push(sampleHistoricalBooking);
@@ -255,6 +327,7 @@ if (fs.existsSync(DATA_FILE)) {
   try {
     const loaded = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     db = loaded;
+    if (!db.pegaConfig) db.pegaConfig = { ...PEGA_CONFIG };
     console.log('Loaded database from', DATA_FILE);
   } catch (err) {
     console.error('Error loading db file, using in-memory defaults:', err);
@@ -269,19 +342,59 @@ function saveData() {
   }
 }
 
-// Helper: Calculate available seats for a show
 function getShowAvailableSeatsCount(showID) {
   const seats = db.seatsByShow[showID] || [];
   return seats.filter(s => s.seatStatus === 'Available').length;
 }
 
 // -------------------------------------------------------------
-// REST API ENDPOINTS
+// PEGA MAJOR ARCHITECTURE ENDPOINTS
 // -------------------------------------------------------------
 
-// --- Master Data Endpoints (Pega Data Pages / Data Types) ---
+// Pega Major Version Metadata & Architecture
+app.get('/api/pega/version', (req, res) => {
+  res.json({
+    success: true,
+    data: db.pegaConfig,
+    activeCasesCount: db.cases.filter(c => !['Completed', 'Cancelled', 'Resolved-Timeout'].includes(c.caseStatus)).length,
+    totalCasesCount: db.cases.length
+  });
+});
 
-// D_MovieList
+// Pega Decision Table Evaluation Endpoint
+app.post('/api/pega/evaluate-decision-table', (req, res) => {
+  const { seatType, showDate, customerTier, basePrice } = req.body;
+  const result = evaluatePegaDecisionTable(seatType || 'Standard', showDate || '2026-09-20', customerTier || 'Regular', basePrice || 200);
+  res.json({ success: true, data: result });
+});
+
+// Pega Major Ruleset Skim (Skim from 01-01-XX to 02-01-01)
+app.post('/api/admin/major-skim', (req, res) => {
+  const oldMajor = db.pegaConfig.majorVersion;
+  const newMajorNum = parseInt(oldMajor, 10) + 1;
+  const newMajor = String(newMajorNum).padStart(2, '0');
+
+  db.pegaConfig.majorVersion = newMajor;
+  db.pegaConfig.minorVersion = '01';
+  db.pegaConfig.patchVersion = '01';
+  db.pegaConfig.applicationVersion = `${newMajor}.01.01`;
+  db.pegaConfig.rulesetVersion = `${db.pegaConfig.rulesetName}:${newMajor}-01-01`;
+
+  // Audit history log entry in system
+  const now = new Date().toISOString();
+  saveData();
+
+  res.json({
+    success: true,
+    message: `Pega Major Ruleset Skim completed successfully! Ruleset upgraded from ${oldMajor}-01-01 to ${newMajor}-01-01.`,
+    data: db.pegaConfig
+  });
+});
+
+// -------------------------------------------------------------
+// MASTER DATA ENDPOINTS (Pega Data Pages / Data Types)
+// -------------------------------------------------------------
+
 app.get('/api/movies', (req, res) => {
   res.json({ success: true, data: db.movies });
 });
@@ -307,7 +420,6 @@ app.post('/api/movies', (req, res) => {
   res.json({ success: true, data: newMovie });
 });
 
-// D_TheatreList
 app.get('/api/theatres', (req, res) => {
   const { location } = req.query;
   let list = db.theatres;
@@ -334,7 +446,6 @@ app.post('/api/theatres', (req, res) => {
   res.json({ success: true, data: newTheatre });
 });
 
-// D_ShowList
 app.get('/api/shows', (req, res) => {
   const { movieID, theatreID, date } = req.query;
   let list = db.shows.map(show => {
@@ -344,15 +455,9 @@ app.get('/api/shows', (req, res) => {
     };
   });
 
-  if (movieID) {
-    list = list.filter(s => s.movieID === movieID);
-  }
-  if (theatreID) {
-    list = list.filter(s => s.theatreID === theatreID);
-  }
-  if (date) {
-    list = list.filter(s => s.showDate === date);
-  }
+  if (movieID) list = list.filter(s => s.movieID === movieID);
+  if (theatreID) list = list.filter(s => s.theatreID === theatreID);
+  if (date) list = list.filter(s => s.showDate === date);
 
   res.json({ success: true, data: list });
 });
@@ -381,14 +486,12 @@ app.post('/api/shows', (req, res) => {
   };
 
   db.shows.push(newShow);
-  // generate seats
   db.seatsByShow[showID] = generateStandardSeats(showID);
   saveData();
 
   res.json({ success: true, data: { ...newShow, availableSeats: theatre.totalSeats } });
 });
 
-// D_SeatAvailability by showID
 app.get('/api/shows/:showID/seats', (req, res) => {
   const { showID } = req.params;
   const show = db.shows.find(s => s.showID === showID);
@@ -415,21 +518,24 @@ app.get('/api/shows/:showID/seats', (req, res) => {
   });
 });
 
-// --- Pega Case Lifecycle Engine (Case Type: Movie Ticket Booking) ---
+// -------------------------------------------------------------
+// PEGA CASE LIFECYCLE (PRIMARY & ALTERNATE STAGES)
+// -------------------------------------------------------------
 
-// STAGE 1: Booking Request (Create Case)
+// STAGE 1: Booking Request
 app.post('/api/cases', (req, res) => {
   const {
     customerName,
     email,
     mobileNumber,
+    customerTier,
     movieID,
     theatreID,
     showID,
     numberOfTickets
   } = req.body;
 
-  // Business Rule 1: Validate mandatory fields
+  // Validation
   const missingFields = [];
   if (!customerName || customerName.trim() === '') missingFields.push('Customer Name');
   if (!email || email.trim() === '') missingFields.push('Email');
@@ -464,26 +570,39 @@ app.post('/api/cases', (req, res) => {
     });
   }
 
-  // Create unique Booking ID (Prefix: CW-XXXXX)
+  // Pega Routing Rule: If tickets > 4, route to Manager Work Queue
+  const requiresManagerApproval = ticketsCount > 4;
+  const initialStatus = requiresManagerApproval ? 'Pending-ManagerApproval' : 'Booking Requested';
+  const initialRoute = requiresManagerApproval ? 'StaffReviewQueue@CineWave' : 'pyWorkList';
+
   const bookingID = `CW-${db.caseCounter++}`;
   const now = new Date().toISOString();
 
-  // Total Amount Calculation (Business Rule 6)
-  const ticketPrice = show.ticketPrice;
-  const totalAmount = ticketsCount * ticketPrice;
+  // Evaluate Decision Table for Initial Unit Price
+  const dtEval = evaluatePegaDecisionTable('Standard', show.showDate, customerTier || 'Regular', show.ticketPrice);
+  const unitPrice = dtEval.finalUnitPrice;
+  const totalAmount = ticketsCount * unitPrice;
 
   const newCase = {
     bookingID,
     caseID: bookingID,
     caseType: 'Movie Ticket Booking',
-    caseStatus: 'Booking Requested', // Initial status
+    caseStatus: initialStatus,
     currentStage: 'Stage 1 – Booking Request',
     stageNumber: 1,
+    isAlternateStage: false,
+    alternateStageName: null,
+    urgency: 10,
+    rulesetVersion: db.pegaConfig.rulesetVersion,
+    requiresManagerApproval,
+    managerApprovalStatus: requiresManagerApproval ? 'Pending' : 'N/A',
+    routedTo: initialRoute,
     customer: {
       customerID: `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName,
       email,
-      mobileNumber
+      mobileNumber,
+      customerTier: customerTier || 'Regular'
     },
     movie: {
       movieID: movie.movieID,
@@ -504,17 +623,28 @@ app.post('/api/cases', (req, res) => {
     },
     numberOfTickets: ticketsCount,
     selectedSeats: [],
-    ticketPrice,
+    basePrice: show.ticketPrice,
+    ticketPrice: unitPrice,
     totalAmount,
+    decisionTableAudit: dtEval,
+    sla: {
+      goalSeconds: 300,       // Goal: 5 mins -> Urgency +20
+      deadlineSeconds: 600,   // Deadline: 10 mins -> Urgency +30, Route to Alternate Stage
+      startTime: now,
+      status: 'Active'
+    },
     bookingDate: now,
     confirmationDate: null,
     history: [
       {
         timestamp: now,
-        action: 'Case Created',
-        status: 'Booking Requested',
+        action: `Case Created (${db.pegaConfig.rulesetVersion})`,
+        status: initialStatus,
         user: customerName,
-        details: `Booking Request created for ${movie.movieName} at ${theatre.theatreName}. Tickets: ${ticketsCount}`
+        urgency: 10,
+        details: requiresManagerApproval
+          ? `Bulk Booking (${ticketsCount} tickets) routed to StaffReviewQueue@CineWave for Manager Approval.`
+          : `Booking Request created for ${movie.movieName} at ${theatre.theatreName}. Tickets: ${ticketsCount}`
       }
     ]
   };
@@ -524,12 +654,62 @@ app.post('/api/cases', (req, res) => {
 
   res.json({
     success: true,
-    message: `Case ${bookingID} initiated successfully with status 'Booking Requested'`,
+    message: `Case ${bookingID} initiated in Ruleset ${db.pegaConfig.rulesetVersion} with status '${initialStatus}'`,
     data: newCase
   });
 });
 
-// STAGE 2: Check Show & Seat Availability -> Select Seats
+// Pega Work Queue Action: Manager Review for Bulk Bookings
+app.post('/api/cases/:id/manager-review', (req, res) => {
+  const { id } = req.params;
+  const { action, managerNotes } = req.body; // 'APPROVE' or 'REJECT'
+
+  const caseObj = db.cases.find(c => c.bookingID === id || c.caseID === id);
+  if (!caseObj) {
+    return res.status(404).json({ success: false, message: 'Case not found' });
+  }
+
+  if (caseObj.caseStatus !== 'Pending-ManagerApproval') {
+    return res.status(400).json({ success: false, message: `Case does not require manager approval (Status: ${caseObj.caseStatus})` });
+  }
+
+  const now = new Date().toISOString();
+
+  if (action === 'REJECT') {
+    caseObj.isAlternateStage = true;
+    caseObj.alternateStageName = 'Alternate Stage: Cancellation (Manager Rejected)';
+    caseObj.caseStatus = 'Cancelled';
+    caseObj.managerApprovalStatus = 'Rejected';
+    caseObj.history.push({
+      timestamp: now,
+      action: 'Bulk Booking Rejected by Cinema Manager',
+      status: 'Cancelled',
+      user: 'CinemaManager',
+      urgency: caseObj.urgency,
+      details: `Manager rejected bulk order: ${managerNotes || 'Exceeds cinema allocation limits'}`
+    });
+    saveData();
+    return res.json({ success: true, message: `Case ${caseObj.bookingID} rejected and routed to Alternate Stage: Cancellation`, data: caseObj });
+  }
+
+  // Approved
+  caseObj.managerApprovalStatus = 'Approved';
+  caseObj.caseStatus = 'Booking Requested';
+  caseObj.routedTo = 'pyWorkList';
+  caseObj.history.push({
+    timestamp: now,
+    action: 'Bulk Booking Approved by Cinema Manager',
+    status: 'Booking Requested',
+    user: 'CinemaManager',
+    urgency: caseObj.urgency,
+    details: `Manager approved bulk booking (${caseObj.numberOfTickets} tickets). Routed to customer pyWorkList for seat selection.`
+  });
+
+  saveData();
+  res.json({ success: true, message: `Case ${caseObj.bookingID} approved! Routed to customer worklist.`, data: caseObj });
+});
+
+// STAGE 2: Check Show & Seat Availability -> Select Seats & Apply Decision Table
 app.post('/api/cases/:id/select-seats', (req, res) => {
   const { id } = req.params;
   const { selectedSeats } = req.body;
@@ -539,15 +719,18 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
     return res.status(404).json({ success: false, message: 'Case not found' });
   }
 
-  if (caseObj.caseStatus === 'Cancelled' || caseObj.caseStatus === 'Completed') {
+  if (['Cancelled', 'Completed', 'Resolved-Timeout'].includes(caseObj.caseStatus)) {
     return res.status(400).json({ success: false, message: `Cannot modify a case that is already ${caseObj.caseStatus}` });
+  }
+
+  if (caseObj.caseStatus === 'Pending-ManagerApproval') {
+    return res.status(400).json({ success: false, message: 'This case is awaiting Cinema Manager approval in StaffReviewQueue.' });
   }
 
   if (!Array.isArray(selectedSeats) || selectedSeats.length === 0) {
     return res.status(400).json({ success: false, message: 'No seats selected' });
   }
 
-  // Business Rule 2: Selected seats must equal tickets requested
   if (selectedSeats.length !== caseObj.numberOfTickets) {
     return res.status(400).json({
       success: false,
@@ -555,7 +738,6 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
     });
   }
 
-  // Business Rule 3 & 8: Only available seats can be selected; seat cannot be booked twice
   const showSeats = db.seatsByShow[caseObj.show.showID] || [];
   const unavailable = [];
   selectedSeats.forEach(seatNum => {
@@ -572,8 +754,22 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
     });
   }
 
-  // Update Case
+  // Detect dominant seat type and re-evaluate Pega Decision Table
+  const firstSeat = showSeats.find(s => s.seatNumber === selectedSeats[0]);
+  const seatType = firstSeat ? firstSeat.seatType : 'Standard';
+
+  const dtResult = evaluatePegaDecisionTable(
+    seatType,
+    caseObj.show.showDate,
+    caseObj.customer.customerTier,
+    caseObj.basePrice || caseObj.ticketPrice
+  );
+
   caseObj.selectedSeats = selectedSeats;
+  caseObj.ticketPrice = dtResult.finalUnitPrice;
+  caseObj.totalAmount = caseObj.numberOfTickets * dtResult.finalUnitPrice;
+  caseObj.decisionTableAudit = dtResult;
+
   caseObj.caseStatus = 'Availability Checked';
   caseObj.currentStage = 'Stage 2 – Check Show & Seat Availability';
   caseObj.stageNumber = 2;
@@ -581,10 +777,11 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
   const now = new Date().toISOString();
   caseObj.history.push({
     timestamp: now,
-    action: 'Seats Selected & Availability Checked',
+    action: `Seats Selected & Decision Table Evaluated (${seatType})`,
     status: 'Availability Checked',
     user: caseObj.customer.customerName,
-    details: `Selected seats: ${selectedSeats.join(', ')} for Show ${caseObj.show.showID}`
+    urgency: caseObj.urgency,
+    details: `Selected seats: ${selectedSeats.join(', ')}. Unit price set to ₹${caseObj.ticketPrice} via Pega Decision Table.`
   });
 
   // Advance to Stage 3: Awaiting Customer Confirmation
@@ -596,7 +793,8 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
     action: 'Ready for Customer Confirmation',
     status: 'Awaiting Customer Confirmation',
     user: 'System',
-    details: `Booking summary prepared. Total Amount: ₹${caseObj.totalAmount}`
+    urgency: caseObj.urgency,
+    details: `Booking summary prepared. Total Amount: ₹${caseObj.totalAmount} (SLA active)`
   });
 
   saveData();
@@ -608,17 +806,65 @@ app.post('/api/cases/:id/select-seats', (req, res) => {
   });
 });
 
+// Pega SLA Engine: Fast-forward / Expire SLA to Alternate Stage: Seat Hold Timeout
+app.post('/api/cases/:id/expire-sla', (req, res) => {
+  const { id } = req.params;
+  const caseObj = db.cases.find(c => c.bookingID === id || c.caseID === id);
+
+  if (!caseObj) {
+    return res.status(404).json({ success: false, message: 'Case not found' });
+  }
+
+  if (['Completed', 'Cancelled', 'Resolved-Timeout'].includes(caseObj.caseStatus)) {
+    return res.status(400).json({ success: false, message: `Case is already finalized (${caseObj.caseStatus})` });
+  }
+
+  // Release any temporarily held seats
+  const showSeats = db.seatsByShow[caseObj.show.showID] || [];
+  caseObj.selectedSeats.forEach(seatNum => {
+    const seat = showSeats.find(s => s.seatNumber === seatNum);
+    if (seat && seat.seatStatus !== 'Booked') {
+      seat.seatStatus = 'Available';
+    }
+  });
+
+  const now = new Date().toISOString();
+  caseObj.isAlternateStage = true;
+  caseObj.alternateStageName = 'Alternate Stage: Seat Hold Timeout (SLA Expiry)';
+  caseObj.caseStatus = 'Resolved-Timeout';
+  caseObj.currentStage = 'Alternate Stage: Seat Hold Timeout';
+  caseObj.urgency = 60; // Deadline passed urgency
+  caseObj.sla.status = 'DeadlinePassed-Expired';
+
+  caseObj.history.push({
+    timestamp: now,
+    action: 'Pega SLA Deadline Expired (Urgency -> 60)',
+    status: 'Resolved-Timeout',
+    user: 'Pega SLA Agent (QueueProcessor)',
+    urgency: 60,
+    details: 'Customer failed to confirm within 10-minute SLA deadline. Case routed to Alternate Stage: Seat Hold Timeout. Held seats released.'
+  });
+
+  saveData();
+
+  res.json({
+    success: true,
+    message: `Pega SLA Deadline elapsed! Case routed to Alternate Stage: Seat Hold Timeout. Status: Resolved-Timeout`,
+    data: caseObj
+  });
+});
+
 // STAGE 3 -> 4 -> 5 -> 6: Customer Decision (Confirm or Cancel)
 app.post('/api/cases/:id/confirm', (req, res) => {
   const { id } = req.params;
-  const { decision } = req.body; // 'CONFIRM' or 'CANCEL'
+  const { decision } = req.body;
 
   const caseObj = db.cases.find(c => c.bookingID === id || c.caseID === id);
   if (!caseObj) {
     return res.status(404).json({ success: false, message: 'Case not found' });
   }
 
-  if (caseObj.caseStatus === 'Cancelled' || caseObj.caseStatus === 'Completed') {
+  if (['Cancelled', 'Completed', 'Resolved-Timeout'].includes(caseObj.caseStatus)) {
     return res.status(400).json({
       success: false,
       message: `Case is already finalized with status '${caseObj.caseStatus}'`
@@ -627,35 +873,37 @@ app.post('/api/cases/:id/confirm', (req, res) => {
 
   const now = new Date().toISOString();
 
-  // Business Rule 5: If customer cancels before final confirmation
+  // Customer CANCEL -> Route to Alternate Stage: Cancellation
   if (decision === 'CANCEL') {
+    caseObj.isAlternateStage = true;
+    caseObj.alternateStageName = 'Alternate Stage: Customer Cancellation';
     caseObj.caseStatus = 'Cancelled';
-    caseObj.currentStage = 'Stage 4 – Booking Processing (Cancelled)';
+    caseObj.currentStage = 'Alternate Stage: Cancellation';
     caseObj.stageNumber = 4;
+    caseObj.sla.status = 'Terminated';
     caseObj.history.push({
       timestamp: now,
-      action: 'Customer Cancelled Booking',
+      action: 'Customer Cancelled -> Alternate Stage: Cancellation',
       status: 'Cancelled',
       user: caseObj.customer.customerName,
-      details: 'Customer elected to cancel the booking at Confirmation stage.'
+      urgency: caseObj.urgency,
+      details: 'Customer elected to cancel the booking at Confirmation stage. Case routed to Alternate Stage: Cancellation.'
     });
 
     saveData();
 
     return res.json({
       success: true,
-      message: `Booking ${caseObj.bookingID} has been successfully cancelled.`,
+      message: `Booking ${caseObj.bookingID} has been routed to Alternate Stage: Cancellation.`,
       data: caseObj
     });
   }
 
-  // Customer CONFIRMED
+  // Customer CONFIRMED -> Advance Primary Stages 4, 5, 6
   if (decision === 'CONFIRM') {
-    // STAGE 4: Booking Processing
     caseObj.currentStage = 'Stage 4 – Booking Processing';
     caseObj.stageNumber = 4;
 
-    // Verify seats are still available right at execution (concurrency check)
     const showSeats = db.seatsByShow[caseObj.show.showID] || [];
     const unavailable = [];
     caseObj.selectedSeats.forEach(seatNum => {
@@ -672,38 +920,38 @@ app.post('/api/cases/:id/confirm', (req, res) => {
       });
     }
 
-    // Business Rule 9: Once booking is confirmed, selected seats must become "Booked"
+    // Reserve seats
     caseObj.selectedSeats.forEach(seatNum => {
       const seat = showSeats.find(s => s.seatNumber === seatNum);
-      if (seat) {
-        seat.seatStatus = 'Booked';
-      }
+      if (seat) seat.seatStatus = 'Booked';
     });
 
     caseObj.caseStatus = 'Confirmed';
     caseObj.confirmationDate = now;
+    caseObj.sla.status = 'Satisfied';
     caseObj.history.push({
       timestamp: now,
       action: 'Booking Confirmed & Seats Reserved',
       status: 'Confirmed',
       user: 'System',
-      details: `Reserved seats: ${caseObj.selectedSeats.join(', ')}. Confirmation Date: ${now}`
+      urgency: caseObj.urgency,
+      details: `Reserved seats: ${caseObj.selectedSeats.join(', ')}. Ruleset: ${caseObj.rulesetVersion}`
     });
 
-    // STAGE 5: Notification (Business Rule 11: Automatically send email notification)
+    // STAGE 5: Notification
     caseObj.currentStage = 'Stage 5 – Notification';
     caseObj.stageNumber = 5;
 
     const emailSubject = `Booking Confirmed: CineWave Entertainment [${caseObj.bookingID}]`;
     const emailBody = `Dear ${caseObj.customer.customerName},
 
-Thank you for booking with CineWave Entertainment! Your movie tickets have been confirmed.
+Thank you for booking with CineWave Entertainment (Application Version: ${db.pegaConfig.applicationVersion})! Your movie tickets have been confirmed.
 
 ==================================================
 BOOKING SUMMARY
 ==================================================
 Booking ID:      ${caseObj.bookingID}
-Customer:        ${caseObj.customer.customerName}
+Customer:        ${caseObj.customer.customerName} (${caseObj.customer.customerTier} Member)
 Movie:           ${caseObj.movie.movieName}
 Theatre:         ${caseObj.theatre.theatreName}
 Location:        ${caseObj.theatre.location}
@@ -711,8 +959,9 @@ Date:            ${caseObj.show.showDate}
 Time:            ${caseObj.show.showTime}
 Selected Seats:  ${caseObj.selectedSeats.join(', ')}
 Total Tickets:   ${caseObj.numberOfTickets}
-Ticket Price:    ₹${caseObj.ticketPrice}
+Ticket Price:    ₹${caseObj.ticketPrice} (Pega Decision Table Applied)
 Total Amount:    ₹${caseObj.totalAmount}
+Ruleset:         ${caseObj.rulesetVersion}
 Booking Status:  Confirmed
 ==================================================
 
@@ -738,19 +987,21 @@ CineWave Entertainment Team`;
       action: 'Email Notification Dispatched',
       status: 'Notification Sent',
       user: 'System (Pega Correspondence)',
+      urgency: caseObj.urgency,
       details: `Sent confirmation email to ${caseObj.customer.email}`
     });
 
     // STAGE 6: Case Completion
     caseObj.currentStage = 'Stage 6 – Case Completion';
     caseObj.stageNumber = 6;
-    caseObj.caseStatus = 'Completed'; // Final Status
+    caseObj.caseStatus = 'Completed';
     caseObj.history.push({
       timestamp: now,
       action: 'Case Resolved-Completed',
       status: 'Completed',
       user: 'System',
-      details: 'All booking stages successfully completed. Booking history archived.'
+      urgency: caseObj.urgency,
+      details: `All booking stages completed under Ruleset ${caseObj.rulesetVersion}. Case archived.`
     });
 
     saveData();
@@ -766,7 +1017,7 @@ CineWave Entertainment Team`;
   return res.status(400).json({ success: false, message: "Invalid decision. Must be 'CONFIRM' or 'CANCEL'" });
 });
 
-// Staff Action: Cancel a booking
+// Staff Action: Cancel a booking (Routes to Alternate Stage: Cancellation)
 app.post('/api/cases/:id/staff-cancel', (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -776,42 +1027,42 @@ app.post('/api/cases/:id/staff-cancel', (req, res) => {
     return res.status(404).json({ success: false, message: 'Case not found' });
   }
 
-  if (caseObj.caseStatus === 'Cancelled') {
-    return res.status(400).json({ success: false, message: 'Case is already cancelled' });
+  if (['Cancelled', 'Resolved-Timeout'].includes(caseObj.caseStatus)) {
+    return res.status(400).json({ success: false, message: 'Case is already cancelled or timed out' });
   }
 
-  // Release seats if they were booked
   const showSeats = db.seatsByShow[caseObj.show.showID] || [];
   caseObj.selectedSeats.forEach(seatNum => {
     const seat = showSeats.find(s => s.seatNumber === seatNum);
-    if (seat) {
-      seat.seatStatus = 'Available';
-    }
+    if (seat) seat.seatStatus = 'Available';
   });
 
   const now = new Date().toISOString();
+  caseObj.isAlternateStage = true;
+  caseObj.alternateStageName = 'Alternate Stage: Staff Cancellation';
   caseObj.caseStatus = 'Cancelled';
-  caseObj.currentStage = 'Resolved-Cancelled';
+  caseObj.currentStage = 'Alternate Stage: Staff Cancellation';
   caseObj.history.push({
     timestamp: now,
-    action: 'Booking Cancelled by Staff',
+    action: 'Booking Cancelled by Staff -> Alternate Stage',
     status: 'Cancelled',
     user: 'Staff Operator',
-    details: `Cancellation reason: ${reason || 'Customer request / administrative action'}. Seats released: ${caseObj.selectedSeats.join(', ')}`
+    urgency: caseObj.urgency,
+    details: `Staff cancellation: ${reason || 'Operator override'}. Seats released: ${caseObj.selectedSeats.join(', ')}`
   });
 
   saveData();
 
   res.json({
     success: true,
-    message: `Booking ${caseObj.bookingID} cancelled by staff. Seats released.`,
+    message: `Booking ${caseObj.bookingID} cancelled by staff and routed to Alternate Stage. Seats released.`,
     data: caseObj
   });
 });
 
-// Get all cases (with optional filters)
+// Get all cases
 app.get('/api/cases', (req, res) => {
-  const { status, email } = req.query;
+  const { status, email, workQueue } = req.query;
   let list = db.cases;
 
   if (status) {
@@ -819,6 +1070,9 @@ app.get('/api/cases', (req, res) => {
   }
   if (email) {
     list = list.filter(c => c.customer.email.toLowerCase() === email.toLowerCase());
+  }
+  if (workQueue) {
+    list = list.filter(c => c.routedTo === workQueue);
   }
 
   res.json({ success: true, count: list.length, data: list });
@@ -843,25 +1097,21 @@ app.get('/api/cases/:id', (req, res) => {
   });
 });
 
-// --- Notifications Endpoint ---
 app.get('/api/notifications', (req, res) => {
   const { bookingID, email } = req.query;
   let list = db.notifications;
-  if (bookingID) {
-    list = list.filter(n => n.bookingID === bookingID);
-  }
-  if (email) {
-    list = list.filter(n => n.recipientEmail.toLowerCase() === email.toLowerCase());
-  }
+  if (bookingID) list = list.filter(n => n.bookingID === bookingID);
+  if (email) list = list.filter(n => n.recipientEmail.toLowerCase() === email.toLowerCase());
   res.json({ success: true, data: list });
 });
 
-// --- Reporting & Analytics Dashboards (Pega Report Definitions) ---
+// Reporting & Analytics
 app.get('/api/reports/dashboard', (req, res) => {
   const totalBookings = db.cases.length;
-  const pendingBookings = db.cases.filter(c => ['Booking Requested', 'Availability Checked', 'Awaiting Customer Confirmation'].includes(c.caseStatus)).length;
+  const pendingBookings = db.cases.filter(c => ['Booking Requested', 'Availability Checked', 'Awaiting Customer Confirmation', 'Pending-ManagerApproval'].includes(c.caseStatus)).length;
   const confirmedBookings = db.cases.filter(c => ['Confirmed', 'Completed'].includes(c.caseStatus)).length;
-  const cancelledBookings = db.cases.filter(c => c.caseStatus === 'Cancelled').length;
+  const cancelledBookings = db.cases.filter(c => ['Cancelled', 'Resolved-Timeout'].includes(c.caseStatus)).length;
+  const pendingApprovals = db.cases.filter(c => c.caseStatus === 'Pending-ManagerApproval').length;
 
   let totalRevenue = 0;
   db.cases.forEach(c => {
@@ -870,27 +1120,23 @@ app.get('/api/reports/dashboard', (req, res) => {
     }
   });
 
-  // Calculate total available seats across all shows
   let totalAvailableSeats = 0;
   Object.keys(db.seatsByShow).forEach(showId => {
     totalAvailableSeats += getShowAvailableSeatsCount(showId);
   });
 
-  // Bookings by Theatre
   const theatreCounts = {};
   db.cases.forEach(c => {
     const tName = c.theatre.theatreName;
     theatreCounts[tName] = (theatreCounts[tName] || 0) + 1;
   });
 
-  // Bookings by Movie
   const movieCounts = {};
   db.cases.forEach(c => {
     const mName = c.movie.movieName;
     movieCounts[mName] = (movieCounts[mName] || 0) + 1;
   });
 
-  // Bookings by Date
   const dateCounts = {};
   db.cases.forEach(c => {
     const date = (c.bookingDate || '').split('T')[0] || 'Unknown';
@@ -904,18 +1150,21 @@ app.get('/api/reports/dashboard', (req, res) => {
       pendingBookings,
       confirmedBookings,
       cancelledBookings,
+      pendingApprovals,
       totalRevenue,
       totalAvailableSeats
     },
     bookingsByTheatre: theatreCounts,
     bookingsByMovie: movieCounts,
-    bookingsByDate: dateCounts
+    bookingsByDate: dateCounts,
+    pegaConfig: db.pegaConfig
   });
 });
 
-// Reset database endpoint (convenient for testing and labs)
+// Admin Reset
 app.post('/api/admin/reset', (req, res) => {
   db = {
+    pegaConfig: { ...PEGA_CONFIG },
     caseCounter: 10001,
     movies: DEFAULT_MOVIES,
     theatres: DEFAULT_THEATRES,
@@ -937,7 +1186,8 @@ app.post('/api/admin/reset', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`=======================================================`);
-  console.log(`🎬 CineWave Entertainment Pega Application Server`);
+  console.log(`🎬 CineWave Entertainment – Pega Major Version ${PEGA_CONFIG.applicationVersion}`);
+  console.log(`📦 Ruleset: ${PEGA_CONFIG.rulesetVersion} (Built on ${PEGA_CONFIG.builtOnApplication})`);
   console.log(`🚀 Running at: http://localhost:${PORT}`);
   console.log(`=======================================================`);
 });

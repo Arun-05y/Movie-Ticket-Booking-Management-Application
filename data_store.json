@@ -1,5 +1,43 @@
 {
-  "caseCounter": 10005,
+  "pegaConfig": {
+    "platformVersion": "24.1 Infinity",
+    "builtOnApplication": "Theme-Cosmos:05.01",
+    "applicationName": "CineWave Entertainment",
+    "applicationVersion": "02.01.01",
+    "majorVersion": "02",
+    "minorVersion": "01",
+    "patchVersion": "01",
+    "rulesetName": "CineWave",
+    "rulesetVersion": "CineWave:02-01-01",
+    "classHierarchy": {
+      "org": "CW",
+      "app": "CW-CineWave",
+      "workPool": "CW-CineWave-Work",
+      "caseType": "CW-CineWave-Work-MovieBooking",
+      "data": "CW-CineWave-Data"
+    },
+    "accessGroups": [
+      {
+        "name": "CineWave:CustomerUser",
+        "portal": "CustomerPortal",
+        "role": "Customer",
+        "defaultUrgency": 10
+      },
+      {
+        "name": "CineWave:StaffOperator",
+        "portal": "StaffPortal",
+        "role": "Operator",
+        "defaultUrgency": 20
+      },
+      {
+        "name": "CineWave:CinemaManager",
+        "portal": "StaffPortal",
+        "role": "Manager",
+        "defaultUrgency": 30
+      }
+    ]
+  },
+  "caseCounter": 10006,
   "movies": [
     {
       "movieID": "MOV-101",
@@ -1638,17 +1676,99 @@
   },
   "cases": [
     {
+      "bookingID": "CW-10005",
+      "caseID": "CW-10005",
+      "caseType": "Movie Ticket Booking",
+      "caseStatus": "Booking Requested",
+      "currentStage": "Stage 1 – Booking Request",
+      "stageNumber": 1,
+      "isAlternateStage": false,
+      "alternateStageName": null,
+      "urgency": 10,
+      "rulesetVersion": "CineWave:02-01-01",
+      "requiresManagerApproval": false,
+      "managerApprovalStatus": "N/A",
+      "routedTo": "pyWorkList",
+      "customer": {
+        "customerID": "CUST-3700",
+        "customerName": "Sneha Patel",
+        "email": "sneha@example.com",
+        "mobileNumber": "9812345678",
+        "customerTier": "Regular"
+      },
+      "movie": {
+        "movieID": "MOV-101",
+        "movieName": "Inception",
+        "genre": "Sci-Fi / Thriller",
+        "language": "English",
+        "duration": "148 mins"
+      },
+      "theatre": {
+        "theatreID": "TH-01",
+        "theatreName": "CineWave Central",
+        "location": "Chennai"
+      },
+      "show": {
+        "showID": "SH-201",
+        "showDate": "2026-09-20",
+        "showTime": "07:30 PM"
+      },
+      "numberOfTickets": 1,
+      "selectedSeats": [],
+      "basePrice": 200,
+      "ticketPrice": 230,
+      "totalAmount": 230,
+      "decisionTableAudit": {
+        "seatType": "Standard",
+        "isWeekend": true,
+        "customerTier": "Regular",
+        "basePrice": 200,
+        "tierSurcharge": 0,
+        "weekendSurge": 30,
+        "discountPct": 0,
+        "discountAmount": 0,
+        "finalUnitPrice": 230,
+        "decisionRuleApplied": "Rule-Declare-DecisionTable: LookupPricing [Standard | Weekend:true | Regular]"
+      },
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "startTime": "2026-09-20T04:17:12.850Z",
+        "status": "Active"
+      },
+      "bookingDate": "2026-09-20T04:17:12.850Z",
+      "confirmationDate": null,
+      "history": [
+        {
+          "timestamp": "2026-09-20T04:17:12.850Z",
+          "action": "Case Created (CineWave:02-01-01)",
+          "status": "Booking Requested",
+          "user": "Sneha Patel",
+          "urgency": 10,
+          "details": "Booking Request created for Inception at CineWave Central. Tickets: 1"
+        }
+      ]
+    },
+    {
       "bookingID": "CW-10004",
       "caseID": "CW-10004",
       "caseType": "Movie Ticket Booking",
       "caseStatus": "Cancelled",
-      "currentStage": "Stage 4 – Booking Processing (Cancelled)",
+      "currentStage": "Alternate Stage: Cancellation",
       "stageNumber": 4,
+      "isAlternateStage": true,
+      "alternateStageName": "Alternate Stage: Customer Cancellation",
+      "urgency": 10,
+      "rulesetVersion": "CineWave:01-01-01",
+      "requiresManagerApproval": false,
+      "managerApprovalStatus": "N/A",
+      "routedTo": "pyWorkList",
       "customer": {
-        "customerID": "CUST-2025",
-        "customerName": "Sanjay Dutt",
-        "email": "sanjay@example.com",
-        "mobileNumber": "9833344455"
+        "customerID": "CUST-4219",
+        "customerName": "Divya Nair",
+        "email": "divya@example.com",
+        "mobileNumber": "9855566677",
+        "customerTier": "Gold"
       },
       "movie": {
         "movieID": "MOV-101",
@@ -1669,40 +1789,63 @@
       },
       "numberOfTickets": 1,
       "selectedSeats": [
-        "B9"
+        "B4"
       ],
-      "ticketPrice": 200,
-      "totalAmount": 200,
-      "bookingDate": "2026-09-18T17:02:31.618Z",
+      "basePrice": 200,
+      "ticketPrice": 172,
+      "totalAmount": 172,
+      "decisionTableAudit": {
+        "seatType": "Standard",
+        "isWeekend": true,
+        "customerTier": "Gold",
+        "basePrice": 200,
+        "tierSurcharge": 0,
+        "weekendSurge": 30,
+        "discountPct": 25,
+        "discountAmount": 58,
+        "finalUnitPrice": 172,
+        "decisionRuleApplied": "Rule-Declare-DecisionTable: LookupPricing [Standard | Weekend:true | Gold]"
+      },
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "startTime": "2026-09-20T04:17:12.838Z",
+        "status": "Terminated"
+      },
+      "bookingDate": "2026-09-20T04:17:12.838Z",
       "confirmationDate": null,
       "history": [
         {
-          "timestamp": "2026-09-18T17:02:31.618Z",
-          "action": "Case Created",
+          "timestamp": "2026-09-20T04:17:12.838Z",
+          "action": "Case Created (CineWave:01-01-01)",
           "status": "Booking Requested",
-          "user": "Sanjay Dutt",
+          "user": "Divya Nair",
+          "urgency": 10,
           "details": "Booking Request created for Inception at CineWave Central. Tickets: 1"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.620Z",
-          "action": "Seats Selected & Availability Checked",
+          "timestamp": "2026-09-20T04:17:12.843Z",
+          "action": "Seats Selected & Decision Table Evaluated (Standard)",
           "status": "Availability Checked",
-          "user": "Sanjay Dutt",
-          "details": "Selected seats: B9 for Show SH-201"
+          "user": "Divya Nair",
+          "urgency": 10,
+          "details": "Selected seats: B4. Unit price set to ₹172 via Pega Decision Table."
         },
         {
-          "timestamp": "2026-09-18T17:02:31.620Z",
+          "timestamp": "2026-09-20T04:17:12.843Z",
           "action": "Ready for Customer Confirmation",
           "status": "Awaiting Customer Confirmation",
           "user": "System",
-          "details": "Booking summary prepared. Total Amount: ₹200"
+          "urgency": 10,
+          "details": "Booking summary prepared. Total Amount: ₹172 (SLA active)"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.623Z",
-          "action": "Customer Cancelled Booking",
+          "timestamp": "2026-09-20T04:17:12.845Z",
+          "action": "Customer Cancelled -> Alternate Stage: Cancellation",
           "status": "Cancelled",
-          "user": "Sanjay Dutt",
-          "details": "Customer elected to cancel the booking at Confirmation stage."
+          "user": "Divya Nair",
+          "urgency": 10,
+          "details": "Customer elected to cancel the booking at Confirmation stage. Case routed to Alternate Stage: Cancellation."
         }
       ]
     },
@@ -1710,14 +1853,22 @@
       "bookingID": "CW-10003",
       "caseID": "CW-10003",
       "caseType": "Movie Ticket Booking",
-      "caseStatus": "Booking Requested",
-      "currentStage": "Stage 1 – Booking Request",
-      "stageNumber": 1,
+      "caseStatus": "Resolved-Timeout",
+      "currentStage": "Alternate Stage: Seat Hold Timeout",
+      "stageNumber": 3,
+      "isAlternateStage": true,
+      "alternateStageName": "Alternate Stage: Seat Hold Timeout (SLA Expiry)",
+      "urgency": 60,
+      "rulesetVersion": "CineWave:01-01-01",
+      "requiresManagerApproval": false,
+      "managerApprovalStatus": "N/A",
+      "routedTo": "pyWorkList",
       "customer": {
-        "customerID": "CUST-4392",
-        "customerName": "Vikram Seth",
-        "email": "vikram@example.com",
-        "mobileNumber": "9822233344"
+        "customerID": "CUST-4106",
+        "customerName": "Karan Mehra",
+        "email": "karan@example.com",
+        "mobileNumber": "9877788899",
+        "customerTier": "Regular"
       },
       "movie": {
         "movieID": "MOV-101",
@@ -1736,19 +1887,65 @@
         "showDate": "2026-09-20",
         "showTime": "07:30 PM"
       },
-      "numberOfTickets": 2,
-      "selectedSeats": [],
-      "ticketPrice": 200,
-      "totalAmount": 400,
-      "bookingDate": "2026-09-18T17:02:31.614Z",
+      "numberOfTickets": 1,
+      "selectedSeats": [
+        "B3"
+      ],
+      "basePrice": 200,
+      "ticketPrice": 230,
+      "totalAmount": 230,
+      "decisionTableAudit": {
+        "seatType": "Standard",
+        "isWeekend": true,
+        "customerTier": "Regular",
+        "basePrice": 200,
+        "tierSurcharge": 0,
+        "weekendSurge": 30,
+        "discountPct": 0,
+        "discountAmount": 0,
+        "finalUnitPrice": 230,
+        "decisionRuleApplied": "Rule-Declare-DecisionTable: LookupPricing [Standard | Weekend:true | Regular]"
+      },
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "startTime": "2026-09-20T04:17:12.825Z",
+        "status": "DeadlinePassed-Expired"
+      },
+      "bookingDate": "2026-09-20T04:17:12.825Z",
       "confirmationDate": null,
       "history": [
         {
-          "timestamp": "2026-09-18T17:02:31.614Z",
-          "action": "Case Created",
+          "timestamp": "2026-09-20T04:17:12.825Z",
+          "action": "Case Created (CineWave:01-01-01)",
           "status": "Booking Requested",
-          "user": "Vikram Seth",
-          "details": "Booking Request created for Inception at CineWave Central. Tickets: 2"
+          "user": "Karan Mehra",
+          "urgency": 10,
+          "details": "Booking Request created for Inception at CineWave Central. Tickets: 1"
+        },
+        {
+          "timestamp": "2026-09-20T04:17:12.829Z",
+          "action": "Seats Selected & Decision Table Evaluated (Standard)",
+          "status": "Availability Checked",
+          "user": "Karan Mehra",
+          "urgency": 10,
+          "details": "Selected seats: B3. Unit price set to ₹230 via Pega Decision Table."
+        },
+        {
+          "timestamp": "2026-09-20T04:17:12.829Z",
+          "action": "Ready for Customer Confirmation",
+          "status": "Awaiting Customer Confirmation",
+          "user": "System",
+          "urgency": 10,
+          "details": "Booking summary prepared. Total Amount: ₹230 (SLA active)"
+        },
+        {
+          "timestamp": "2026-09-20T04:17:12.833Z",
+          "action": "Pega SLA Deadline Expired (Urgency -> 60)",
+          "status": "Resolved-Timeout",
+          "user": "Pega SLA Agent (QueueProcessor)",
+          "urgency": 60,
+          "details": "Customer failed to confirm within 10-minute SLA deadline. Case routed to Alternate Stage: Seat Hold Timeout. Held seats released."
         }
       ]
     },
@@ -1759,11 +1956,19 @@
       "caseStatus": "Booking Requested",
       "currentStage": "Stage 1 – Booking Request",
       "stageNumber": 1,
+      "isAlternateStage": false,
+      "alternateStageName": null,
+      "urgency": 10,
+      "rulesetVersion": "CineWave:01-01-01",
+      "requiresManagerApproval": true,
+      "managerApprovalStatus": "Approved",
+      "routedTo": "pyWorkList",
       "customer": {
-        "customerID": "CUST-7667",
-        "customerName": "Ananya Roy",
+        "customerID": "CUST-9298",
+        "customerName": "Ananya Sharma",
         "email": "ananya@example.com",
-        "mobileNumber": "9811122233"
+        "mobileNumber": "9811122233",
+        "customerTier": "Regular"
       },
       "movie": {
         "movieID": "MOV-102",
@@ -1782,19 +1987,47 @@
         "showDate": "2026-09-20",
         "showTime": "06:00 PM"
       },
-      "numberOfTickets": 3,
+      "numberOfTickets": 5,
       "selectedSeats": [],
-      "ticketPrice": 250,
-      "totalAmount": 750,
-      "bookingDate": "2026-09-18T17:02:31.609Z",
+      "basePrice": 250,
+      "ticketPrice": 280,
+      "totalAmount": 1400,
+      "decisionTableAudit": {
+        "seatType": "Standard",
+        "isWeekend": true,
+        "customerTier": "Regular",
+        "basePrice": 250,
+        "tierSurcharge": 0,
+        "weekendSurge": 30,
+        "discountPct": 0,
+        "discountAmount": 0,
+        "finalUnitPrice": 280,
+        "decisionRuleApplied": "Rule-Declare-DecisionTable: LookupPricing [Standard | Weekend:true | Regular]"
+      },
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "startTime": "2026-09-20T04:17:12.819Z",
+        "status": "Active"
+      },
+      "bookingDate": "2026-09-20T04:17:12.819Z",
       "confirmationDate": null,
       "history": [
         {
-          "timestamp": "2026-09-18T17:02:31.609Z",
-          "action": "Case Created",
+          "timestamp": "2026-09-20T04:17:12.819Z",
+          "action": "Case Created (CineWave:01-01-01)",
+          "status": "Pending-ManagerApproval",
+          "user": "Ananya Sharma",
+          "urgency": 10,
+          "details": "Bulk Booking (5 tickets) routed to StaffReviewQueue@CineWave for Manager Approval."
+        },
+        {
+          "timestamp": "2026-09-20T04:17:12.821Z",
+          "action": "Bulk Booking Approved by Cinema Manager",
           "status": "Booking Requested",
-          "user": "Ananya Roy",
-          "details": "Booking Request created for Interstellar at CineWave IMAX. Tickets: 3"
+          "user": "CinemaManager",
+          "urgency": 10,
+          "details": "Manager approved bulk booking (5 tickets). Routed to customer pyWorkList for seat selection."
         }
       ]
     },
@@ -1805,11 +2038,19 @@
       "caseStatus": "Completed",
       "currentStage": "Stage 6 – Case Completion",
       "stageNumber": 6,
+      "isAlternateStage": false,
+      "alternateStageName": null,
+      "urgency": 10,
+      "rulesetVersion": "CineWave:01-01-01",
+      "requiresManagerApproval": false,
+      "managerApprovalStatus": "N/A",
+      "routedTo": "pyWorkList",
       "customer": {
-        "customerID": "CUST-3182",
+        "customerID": "CUST-1838",
         "customerName": "Rahul Verma",
         "email": "rahul.verma@example.com",
-        "mobileNumber": "9845012345"
+        "mobileNumber": "9845012345",
+        "customerTier": "VIP"
       },
       "movie": {
         "movieID": "MOV-101",
@@ -1833,52 +2074,77 @@
         "A3",
         "A4"
       ],
-      "ticketPrice": 200,
-      "totalAmount": 400,
-      "bookingDate": "2026-09-18T17:02:31.590Z",
-      "confirmationDate": "2026-09-18T17:02:31.600Z",
+      "basePrice": 200,
+      "ticketPrice": 195,
+      "totalAmount": 390,
+      "decisionTableAudit": {
+        "seatType": "Standard",
+        "isWeekend": true,
+        "customerTier": "VIP",
+        "basePrice": 200,
+        "tierSurcharge": 0,
+        "weekendSurge": 30,
+        "discountPct": 15,
+        "discountAmount": 35,
+        "finalUnitPrice": 195,
+        "decisionRuleApplied": "Rule-Declare-DecisionTable: LookupPricing [Standard | Weekend:true | VIP]"
+      },
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "startTime": "2026-09-20T04:17:12.805Z",
+        "status": "Satisfied"
+      },
+      "bookingDate": "2026-09-20T04:17:12.805Z",
+      "confirmationDate": "2026-09-20T04:17:12.816Z",
       "history": [
         {
-          "timestamp": "2026-09-18T17:02:31.590Z",
-          "action": "Case Created",
+          "timestamp": "2026-09-20T04:17:12.805Z",
+          "action": "Case Created (CineWave:01-01-01)",
           "status": "Booking Requested",
           "user": "Rahul Verma",
+          "urgency": 10,
           "details": "Booking Request created for Inception at CineWave Central. Tickets: 2"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.597Z",
-          "action": "Seats Selected & Availability Checked",
+          "timestamp": "2026-09-20T04:17:12.812Z",
+          "action": "Seats Selected & Decision Table Evaluated (Standard)",
           "status": "Availability Checked",
           "user": "Rahul Verma",
-          "details": "Selected seats: A3, A4 for Show SH-201"
+          "urgency": 10,
+          "details": "Selected seats: A3, A4. Unit price set to ₹195 via Pega Decision Table."
         },
         {
-          "timestamp": "2026-09-18T17:02:31.597Z",
+          "timestamp": "2026-09-20T04:17:12.812Z",
           "action": "Ready for Customer Confirmation",
           "status": "Awaiting Customer Confirmation",
           "user": "System",
-          "details": "Booking summary prepared. Total Amount: ₹400"
+          "urgency": 10,
+          "details": "Booking summary prepared. Total Amount: ₹390 (SLA active)"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.600Z",
+          "timestamp": "2026-09-20T04:17:12.816Z",
           "action": "Booking Confirmed & Seats Reserved",
           "status": "Confirmed",
           "user": "System",
-          "details": "Reserved seats: A3, A4. Confirmation Date: 2026-09-18T17:02:31.600Z"
+          "urgency": 10,
+          "details": "Reserved seats: A3, A4. Ruleset: CineWave:01-01-01"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.600Z",
+          "timestamp": "2026-09-20T04:17:12.816Z",
           "action": "Email Notification Dispatched",
           "status": "Notification Sent",
           "user": "System (Pega Correspondence)",
+          "urgency": 10,
           "details": "Sent confirmation email to rahul.verma@example.com"
         },
         {
-          "timestamp": "2026-09-18T17:02:31.600Z",
+          "timestamp": "2026-09-20T04:17:12.816Z",
           "action": "Case Resolved-Completed",
           "status": "Completed",
           "user": "System",
-          "details": "All booking stages successfully completed. Booking history archived."
+          "urgency": 10,
+          "details": "All booking stages completed under Ruleset CineWave:01-01-01. Case archived."
         }
       ]
     },
@@ -1888,11 +2154,16 @@
       "caseStatus": "Completed",
       "currentStage": "Stage 6 – Case Completion",
       "stageNumber": 6,
+      "isAlternateStage": false,
+      "alternateStageName": null,
+      "urgency": 10,
+      "rulesetVersion": "CineWave:01-01-01",
       "customer": {
         "customerID": "CUST-901",
         "customerName": "Priya Sharma",
         "email": "priya.sharma@example.com",
-        "mobileNumber": "9876543210"
+        "mobileNumber": "9876543210",
+        "customerTier": "VIP"
       },
       "movie": {
         "movieID": "MOV-101",
@@ -1915,44 +2186,57 @@
       ],
       "ticketPrice": 200,
       "totalAmount": 400,
+      "routedTo": "pyWorkList",
+      "sla": {
+        "goalSeconds": 300,
+        "deadlineSeconds": 600,
+        "elapsedSeconds": 120,
+        "status": "Satisfied"
+      },
       "bookingDate": "2026-09-18T14:30:00.000Z",
       "confirmationDate": "2026-09-18T14:32:00.000Z",
       "history": [
         {
           "timestamp": "2026-09-18T14:30:00.000Z",
-          "action": "Case Created",
+          "action": "Case Created (01-01-01)",
           "status": "Booking Requested",
-          "user": "Priya Sharma"
+          "user": "Priya Sharma",
+          "urgency": 10
         },
         {
           "timestamp": "2026-09-18T14:31:00.000Z",
           "action": "Seats Selected [A1, A2]",
           "status": "Availability Checked",
-          "user": "Priya Sharma"
+          "user": "Priya Sharma",
+          "urgency": 10
         },
         {
           "timestamp": "2026-09-18T14:32:00.000Z",
           "action": "Customer Confirmation Received",
           "status": "Awaiting Customer Confirmation",
-          "user": "Priya Sharma"
+          "user": "Priya Sharma",
+          "urgency": 10
         },
         {
           "timestamp": "2026-09-18T14:32:10.000Z",
           "action": "Booking Processed & Seats Reserved",
           "status": "Confirmed",
-          "user": "System"
+          "user": "System",
+          "urgency": 10
         },
         {
           "timestamp": "2026-09-18T14:32:15.000Z",
           "action": "Email Notification Sent",
           "status": "Notification Sent",
-          "user": "System"
+          "user": "System",
+          "urgency": 10
         },
         {
           "timestamp": "2026-09-18T14:32:20.000Z",
           "action": "Case Resolved-Completed",
           "status": "Completed",
-          "user": "System"
+          "user": "System",
+          "urgency": 10
         }
       ]
     }
@@ -1964,17 +2248,17 @@
       "recipientEmail": "rahul.verma@example.com",
       "recipientName": "Rahul Verma",
       "subject": "Booking Confirmed: CineWave Entertainment [CW-10001]",
-      "bodyText": "Dear Rahul Verma,\n\nThank you for booking with CineWave Entertainment! Your movie tickets have been confirmed.\n\n==================================================\nBOOKING SUMMARY\n==================================================\nBooking ID:      CW-10001\nCustomer:        Rahul Verma\nMovie:           Inception\nTheatre:         CineWave Central\nLocation:        Chennai\nDate:            2026-09-20\nTime:            07:30 PM\nSelected Seats:  A3, A4\nTotal Tickets:   2\nTicket Price:    ₹200\nTotal Amount:    ₹400\nBooking Status:  Confirmed\n==================================================\n\nPlease show this digital confirmation or your Booking ID at the cinema entrance. Enjoy the movie!\n\nWarm regards,\nCineWave Entertainment Team",
-      "sentAt": "2026-09-18T17:02:31.600Z"
+      "bodyText": "Dear Rahul Verma,\n\nThank you for booking with CineWave Entertainment (Application Version: 01.01.01)! Your movie tickets have been confirmed.\n\n==================================================\nBOOKING SUMMARY\n==================================================\nBooking ID:      CW-10001\nCustomer:        Rahul Verma (VIP Member)\nMovie:           Inception\nTheatre:         CineWave Central\nLocation:        Chennai\nDate:            2026-09-20\nTime:            07:30 PM\nSelected Seats:  A3, A4\nTotal Tickets:   2\nTicket Price:    ₹195 (Pega Decision Table Applied)\nTotal Amount:    ₹390\nRuleset:         CineWave:01-01-01\nBooking Status:  Confirmed\n==================================================\n\nPlease show this digital confirmation or your Booking ID at the cinema entrance. Enjoy the movie!\n\nWarm regards,\nCineWave Entertainment Team",
+      "sentAt": "2026-09-20T04:17:12.816Z"
     },
     {
-      "notificationID": "NOTIF-10000",
-      "bookingID": "CW-10000",
-      "recipientEmail": "priya.sharma@example.com",
-      "recipientName": "Priya Sharma",
-      "subject": "Booking Confirmed: CineWave Entertainment [CW-10000]",
-      "bodyText": "Dear Priya Sharma,\n\nYour movie ticket booking is confirmed!\n\nBooking ID: CW-10000\nMovie: Inception\nTheatre: CineWave Central (Chennai)\nDate & Time: 20-Sep-2026 at 07:30 PM\nSeats: A1, A2 (2 Tickets)\nTotal Amount: ₹400\nStatus: Confirmed\n\nThank you for choosing CineWave Entertainment!",
-      "sentAt": "2026-09-18T14:32:15.000Z"
+      "notificationID": "NOTIF-10002",
+      "bookingID": "CW-10001",
+      "recipientEmail": "rahul.verma@example.com",
+      "recipientName": "Rahul Verma",
+      "subject": "Booking Confirmed: CineWave Entertainment [CW-10001]",
+      "bodyText": "Dear Rahul Verma,\n\nThank you for booking with CineWave Entertainment (Application Version: 01.01.01)! Your movie tickets have been confirmed.\n\n==================================================\nBOOKING SUMMARY\n==================================================\nBooking ID:      CW-10001\nCustomer:        Rahul Verma (VIP Member)\nMovie:           Inception\nTheatre:         CineWave Central\nLocation:        Chennai\nDate:            2026-09-20\nTime:            07:30 PM\nSelected Seats:  A3, A4\nTotal Tickets:   2\nTicket Price:    ₹195 (Pega Decision Table Applied)\nTotal Amount:    ₹390\nRuleset:         01-01-01\nBooking Status:  Confirmed\n==================================================\n\nPlease show this digital confirmation or your Booking ID at the cinema entrance. Enjoy the movie!\n\nWarm regards,\nCineWave Entertainment Team",
+      "sentAt": "2026-09-20T04:14:20.990Z"
     }
   ]
 }

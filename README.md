@@ -1,38 +1,18 @@
 # CineWave Entertainment – Movie Ticket Booking Management (Pega Platform™)
+### Enterprise Pega Major Architecture ('24.1 Infinity & Theme-Cosmos)
 
-A complete, enterprise-grade Movie Ticket Booking Management application built according to Pega Platform™ architecture standards.
+A complete, enterprise-grade Movie Ticket Booking Management application built according to Pega Platform™ architecture standards, showcasing **Pega Major Architectural Pillars**:
 
-This repository contains both:
-1. **Interactive Pega Cosmos Web Application**: A fully functional, zero-configuration local application mirroring Pega Case Lifecycle stages, customer & staff portals, visual cinema seat selection, business rules, automated email correspondence, and report definitions.
-2. **`PEGA_STUDENT_LAB_GUIDE.md`**: A comprehensive, step-by-step Pega implementation manual designed for students and system architects to reproduce this application directly in Pega App Studio and Dev Studio.
-
----
-
-## 🌟 Key Pega Features Implemented
-
-- **Case Type & Lifecycle**: `Movie Ticket Booking` (`CW-MovieBooking`, Case ID prefix `CW-`).
-  - **Stage 1 – Booking Request**: Collect customer contact info, movie, theatre, show time, and ticket quantity. Initial status: `Booking Requested`.
-  - **Stage 2 – Check Show & Seat Availability**: Live seat layout matrix (Rows A-E, 1-10). Real-time validation preventing duplicate booking of already reserved seats and enforcing selected seats = requested tickets count. Status: `Availability Checked`.
-  - **Stage 3 – Customer Confirmation**: Summary card showing Movie, Theatre, Location, Date/Time, Seats, Price, and Total Amount (`Tickets × TicketPrice`). Customer must Confirm or Cancel. Status: `Awaiting Customer Confirmation`.
-  - **Stage 4 – Booking Processing**: Decision shape reserving seats on confirmation, or releasing holds on cancellation. Status: `Confirmed` or `Cancelled`.
-  - **Stage 5 – Notification**: Automated correspondence generation (`CorrType: EMAIL`) dispatching receipt to customer email.
-  - **Stage 6 – Case Completion**: Resolution as `Resolved-Completed` and audit history logging in `pyHistory`.
-
-- **Pega Data Types**:
-  - `Customer` (`CW-CineWave-Data-Customer`): CustomerID, CustomerName, Email, MobileNumber
-  - `Movie` (`CW-CineWave-Data-Movie`): MovieID, MovieName, Language, Genre, Duration, Rating
-  - `Theatre` (`CW-CineWave-Data-Theatre`): TheatreID, TheatreName, Location, TotalSeats
-  - `Show` (`CW-CineWave-Data-Show`): ShowID, Movie, Theatre, ShowDate, ShowTime, TicketPrice, AvailableSeats, TotalSeats
-  - `Seat` (`CW-CineWave-Data-Seat`): SeatNumber, SeatType, SeatStatus, ShowID
-  - `Booking` (`CW-CineWave-Work-MovieBooking`): BookingID, Customer, Movie, Theatre, SelectedSeats, TotalAmount, Status, Timestamps
-
-- **Pega Portals**:
-  - **Customer Portal**: Create new booking cases, review live stage chevrons, track "My Bookings", and view delivered email notifications in the simulated inbox.
-  - **Staff Operator Portal**: View booking ledger (All, Pending, Confirmed, Cancelled), cancel bookings administratively, inspect show seating occupancy, manage movies and show schedules, and view report definitions & analytics.
-
-- **Reports & Analytics Dashboard**:
-  - KPI Cards: Total Bookings, Pending, Confirmed, Cancelled, Available Seats, Gross Revenue.
-  - Pega Report Definition Visualizations: Bookings by Theatre, Bookings by Movie, Bookings by Date.
+- **Ruleset Major Versioning & Skimming**: Initial Major version `CineWave:01-01-01` with automated Pega Major Skim capabilities to `CineWave:02-01-01`.
+- **Enterprise Class Structure (ECS)**: `CW-CineWave-Work-MovieBooking` inheriting from organizational and application base layers.
+- **Primary & Alternate Stages**:
+  - **Primary Stages 1 to 6**: `Booking Request` &rarr; `Check Availability` &rarr; `Customer Confirmation` &rarr; `Booking Processing` &rarr; `Notification` &rarr; `Case Completion`.
+  - **Alternate Stage A: Seat Hold Timeout (SLA Expiry)**: Automatically releases reserved seats and sets status to `Resolved-Timeout` when the 10-minute SLA deadline passes.
+  - **Alternate Stage B: Cancellation**: Resolves case as `Cancelled` when customer or manager aborts booking.
+- **Service Level Agreements (SLA)**: `SeatHoldSLA` with Goal (5m, urgency +20) and Deadline (10m, urgency +30 and route to Alternate Stage).
+- **Pega Decision Tables**: Declarative rule `LookupPricing` evaluating Seat Tier (Standard, Premium, Recliner), Weekend Surcharge, and Membership Discounts (VIP 15%, Gold 25%).
+- **Pega Routing & Work Queues**: Direct routing to `pyWorkList` for regular bookings, and automated routing to `StaffReviewQueue@CineWave` for bulk orders (> 4 tickets) requiring Cinema Manager Approval.
+- **Role-Based Access Control (RBAC)**: Access Groups for `CustomerUser`, `StaffOperator`, and `CinemaManager`.
 
 ---
 
@@ -49,38 +29,20 @@ npm start
 ```
 The server will start on: **`http://localhost:3000`**
 
-Open your browser and navigate to `http://localhost:3000` to interact with the application.
-
-### 3. Run Automated Verification Tests
+### 3. Run Automated Pega Major Verification Tests
 ```bash
 npm test
 ```
-This runs `test_scenarios.js` verifying:
-1. Successful end-to-end booking (Stages 1-6, status Completed, unique `CW-` ID, seat status update, notification generated).
-2. Seat count mismatch validation (Request 3 tickets, select 2 seats -> rejected).
-3. Duplicate booking prevention (Cannot select already-booked seats).
-4. Cancellation flow (Customer cancels -> status Cancelled, seats remain available).
-5. Mandatory field validation.
+Verifies 33 assertions covering:
+1. Pega Major Version metadata (`CineWave:01-01-01`).
+2. Primary lifecycle with Pega Decision Table pricing.
+3. Work Queue routing & Manager Approval for bulk tickets (> 4).
+4. SLA Deadline expiry to Alternate Stage: `Seat Hold Timeout`.
+5. Customer cancellation to Alternate Stage: `Cancellation`.
+6. Pega Major Ruleset Skim (`01-01-01` &rarr; `02-01-01`).
 
 ---
 
 ## 📚 Student Lab Guide
 For complete click-by-click instructions to build this application in **Pega App Studio** and **Pega Dev Studio**, refer to:
 👉 [**`PEGA_STUDENT_LAB_GUIDE.md`**](./PEGA_STUDENT_LAB_GUIDE.md)
-
----
-
-## 📁 Project Structure
-
-```
-d:\MovieS\
-├── PEGA_STUDENT_LAB_GUIDE.md   # Complete Pega App Studio/Dev Studio lab manual
-├── README.md                   # Project overview and quick start instructions
-├── package.json                # Node.js project manifest & dependencies
-├── server.js                   # Express server with Pega Case Lifecycle engine & API
-├── test_scenarios.js           # Automated test suite covering 5 business scenarios
-└── public/
-    ├── index.html              # Customer & Staff portal interfaces
-    ├── pega-cosmos.css         # Authentic Pega Theme Cosmos design system styling
-    └── app.js                  # Frontend controllers for case lifecycle & portals
-```
