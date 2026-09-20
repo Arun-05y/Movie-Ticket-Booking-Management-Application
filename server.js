@@ -1184,12 +1184,14 @@ app.post('/api/admin/reset', (req, res) => {
   res.json({ success: true, message: 'Database reset to default seed state' });
 });
 
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`🎬 CineWave Entertainment – Pega Major Version ${PEGA_CONFIG.applicationVersion}`);
-  console.log(`📦 Ruleset: ${PEGA_CONFIG.rulesetVersion} (Built on ${PEGA_CONFIG.builtOnApplication})`);
-  console.log(`🚀 Running at: http://localhost:${PORT}`);
-  console.log(`=======================================================`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`=======================================================`);
+    console.log(`🎬 CineWave Entertainment – Pega Major Version ${PEGA_CONFIG.applicationVersion}`);
+    console.log(`📦 Ruleset: ${PEGA_CONFIG.rulesetVersion} (Built on ${PEGA_CONFIG.builtOnApplication})`);
+    console.log(`🚀 Running at: http://localhost:${PORT}`);
+    console.log(`=======================================================`);
+  });
+}
 
 module.exports = app;
